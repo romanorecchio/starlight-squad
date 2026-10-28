@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#070b1f">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='26' fill='%2338e8ff'/%3E%3Ccircle cx='24' cy='28' r='6' fill='white'/%3E%3Ccircle cx='40' cy='28' r='6' fill='white'/%3E%3Ccircle cx='25' cy='29' r='3' fill='%230b1030'/%3E%3Ccircle cx='41' cy='29' r='3' fill='%230b1030'/%3E%3C/svg%3E">
+<title>Starlight Squad — co-op space arena</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{touch-action:manipulation;margin:0;height:100%;overflow:hidden;background:#070b1f;color:#e8f0ff;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;user-select:none;-webkit-user-select:none}
+canvas{display:block;position:fixed;inset:0;touch-action:none}
+.screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:16px;z-index:5;background:radial-gradient(ellipse at center,rgba(7,11,31,.55),rgba(7,11,31,.85))}
+.screen.show{display:flex}
+.screen.clear{background:rgba(7,11,31,.45)}
+.panel{background:linear-gradient(160deg,rgba(28,36,80,.92),rgba(14,18,44,.94));border:1px solid rgba(120,160,255,.35);border-radius:18px;padding:22px 24px;max-width:460px;width:100%;box-shadow:0 10px 50px rgba(0,0,0,.5),0 0 40px rgba(80,120,255,.15) inset;text-align:center;max-height:96vh;overflow:auto}
+.logo{margin:4px 0 2px;font-size:44px;line-height:.95;letter-spacing:3px;font-weight:900;background:linear-gradient(90deg,#38e8ff,#b48cff,#ff5fa8);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 12px rgba(120,140,255,.45))}
+.logo span{font-size:56px;letter-spacing:8px}
+.tag{margin:6px 0 16px;color:#9fb0e0;font-size:14px}
+label{display:block;text-align:left;font-size:12px;color:#9fb0e0;margin:8px 0 4px;text-transform:uppercase;letter-spacing:1px}
+input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid rgba(140,170,255,.4);background:rgba(5,8,25,.7);color:#fff;font-size:17px;outline:none;font-weight:600}
+input:focus{border-color:#38e8ff;box-shadow:0 0 0 3px rgba(56,232,255,.2)}
+#code{text-transform:uppercase;letter-spacing:6px;text-align:center;font-size:20px;font-weight:800}
+button{cursor:pointer;border:0;border-radius:12px;padding:11px 16px;font-size:16px;font-weight:800;color:#061022;background:linear-gradient(180deg,#5ff0ff,#22b8e0);box-shadow:0 4px 0 #137a99,0 6px 18px rgba(56,232,255,.25);transition:transform .06s,filter .15s;margin:5px 0;font-family:inherit}
+button:hover{filter:brightness(1.12)}
+button:active{transform:translateY(3px);box-shadow:0 1px 0 #137a99}
+button.big{width:100%;font-size:19px;padding:14px}
+button.alt{background:linear-gradient(180deg,#ff8cc4,#e8458f);box-shadow:0 4px 0 #9c2560,0 6px 18px rgba(255,95,168,.25);color:#200615}
+button.ghost{background:rgba(255,255,255,.08);color:#cfe0ff;box-shadow:none;border:1px solid rgba(160,190,255,.25);font-weight:700;font-size:14px}
+button:disabled{opacity:.45;cursor:default;filter:none}
+.row{display:flex;gap:8px;align-items:center;margin-top:6px}
+.row>*{flex:1}
+.row>button{flex:0 0 auto}
+.small{font-size:13px}
+#swatches{display:flex;gap:8px;justify-content:center;margin:10px 0 12px}
+.sw{width:34px;height:34px;border-radius:50%;cursor:pointer;border:3px solid transparent;box-shadow:0 0 0 2px rgba(255,255,255,.1)}
+.sw.sel{border-color:#fff;transform:scale(1.12)}
+.divider{display:flex;align-items:center;gap:10px;color:#7f8fc0;font-size:12px;margin:10px 0 2px;text-transform:uppercase;letter-spacing:1px}
+.divider:before,.divider:after{content:"";flex:1;height:1px;background:rgba(140,170,255,.25)}
+#best,.muted{color:#9fb0e0;font-size:13px;margin:10px 0 0}
+.howto{text-align:left;font-size:14.5px;line-height:1.45}
+.howto h3{margin:12px 0 4px;color:#38e8ff;font-size:15px}
+.howto kbd{background:#223;border:1px solid #556;border-bottom-width:3px;border-radius:5px;padding:0 6px;font-size:12px;font-family:inherit;color:#fff}
+.roomcode{font-size:54px;font-weight:900;letter-spacing:12px;color:#fff;margin:4px 0;text-shadow:0 0 18px rgba(56,232,255,.7)}
+#plist{list-style:none;padding:0;margin:10px 0;text-align:left}
+#plist li{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.05);margin:5px 0;font-weight:700}
+#plist .dot{width:16px;height:16px;border-radius:50%}
+.cards{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin:14px 0 6px}
+.card{width:150px;min-height:180px;padding:14px 10px;border-radius:14px;background:linear-gradient(170deg,#1f2a66,#121838);border:2px solid rgba(140,170,255,.35);cursor:pointer;transition:transform .12s,border-color .12s;display:flex;flex-direction:column;align-items:center;gap:6px}
+.card:hover{transform:translateY(-6px) scale(1.03);border-color:#38e8ff;box-shadow:0 10px 26px rgba(56,232,255,.25)}
+.card .ic{font-size:40px;line-height:1.1}
+.card .nm{font-weight:900;font-size:16px;color:#fff}
+.card .ds{font-size:13px;color:#b9c8f0}
+.card .lv{font-size:11px;color:#ffcc33;font-weight:800;margin-top:auto}
+.card .key{font-size:11px;color:#7f8fc0}
+.card.chosen{border-color:#8dff4a;transform:scale(1.04)}
+.card.dim{opacity:.35;pointer-events:none}
+.uppanel{max-width:560px}
+h2{margin:6px 0;font-size:26px}
+.big-score{font-size:42px;font-weight:900;color:#ffcc33;margin:4px 0}
+.newbest{color:#8dff4a;font-weight:900;animation:pulse .6s infinite alternate}
+@keyframes pulse{from{transform:scale(1)}to{transform:scale(1.08)}}
+#toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);background:rgba(20,26,60,.95);border:1px solid rgba(140,170,255,.4);padding:10px 16px;border-radius:12px;z-index:20;font-weight:700;display:none;max-width:90vw;text-align:center}
+#hudbtns{position:fixed;right:10px;top:10px;z-index:4;display:none;gap:6px}
+#hudbtns button{padding:6px 10px;font-size:13px;margin:0}
+.stats{display:flex;flex-direction:column;gap:4px;margin:10px 0;text-align:left;font-size:14px}
+.stats div{display:flex;justify-content:space-between;padding:6px 10px;background:rgba(255,255,255,.05);border-radius:8px}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="title" class="screen show">
+  <div class="panel">
+    <h1 class="logo">STARLIGHT<br><span>SQUAD</span></h1>
+    <p class="tag">Co-op space arena &middot; 1&ndash;4 players &middot; survive the waves together</p>
+    <label for="name">Pilot name</label>
+    <input id="name" maxlength="12" placeholder="Your name" autocomplete="off">
+    <div id="swatches"></div>
+    <button id="bSolo" class="big">&#9654; Play Solo</button>
+    <div class="divider">play with friends</div>
+    <button id="bHost" class="big alt">&#9733; Host Co-op Game</button>
+    <div class="row"><input id="code" placeholder="CODE" maxlength="4" autocomplete="off"><button id="bJoin">Join</button></div>
+    <div class="row small" style="margin-top:10px"><button id="bHow" class="ghost">How to play</button><button id="bMute" class="ghost">Sound: on</button></div>
+    <p id="best"></p>
+  </div>
+</div>
+
+<div id="how" class="screen">
+  <div class="panel howto">
+    <h2 style="text-align:center">How to play</h2>
+    <p>Glitch-bots are invading the Starlight Arena! Blast them, survive each wave, and pick an <b>upgrade</b> after every wave. Every <b>5th wave</b> a giant <b>Boss Core</b> shows up.</p>
+    <h3>Controls</h3>
+    <p><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &nbsp;&middot;&nbsp; <b>Mouse</b> aim + hold click to shoot<br>
+    or <kbd>&uarr;</kbd><kbd>&darr;</kbd><kbd>&larr;</kbd><kbd>&rarr;</kbd> shoot in that direction (keyboard-only)<br>
+    <kbd>Space</kbd> / <kbd>Shift</kbd> / right-click: dash (invincible while dashing)<br>
+    <kbd>F</kbd> toggle auto-aim (great on a trackpad) &nbsp;&middot;&nbsp; <kbd>M</kbd> mute &nbsp;&middot;&nbsp; <kbd>P</kbd> pause (solo)<br>
+    <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> pick an upgrade</p>
+    <p><b>Touch:</b> drag the left side to move, drag the right side to aim (auto-aim is on otherwise), tap the DASH button.</p>
+    <h3>Co-op</h3>
+    <p>One person presses <b>Host Co-op Game</b> and gets a 4-letter room code. Friends open the same game on their own device, type the code and press <b>Join</b>. Up to 4 pilots.</p>
+    <p>If a teammate gets knocked down, fly next to them and stay close to <b>revive</b> them. If the whole squad goes down it's game over. Downed pilots also come back at the end of each wave.</p>
+    <p>Collect <b>stars</b> for points and <b>hearts</b> to heal.</p>
+    <div style="text-align:center"><button id="bHowBack" class="big">Got it!</button></div>
+  </div>
+</div>
+
+<div id="lobby" class="screen clear">
+  <div class="panel">
+    <div id="lobbyHostInfo">
+      <div class="muted">ROOM CODE</div>
+      <div class="roomcode" id="roomCode">....</div>
+      <div class="muted" id="lobbyHint">Friends: open this game, type the code, press Join.</div>
+      <button id="bCopy" class="ghost" style="display:none">Copy invite link</button>
+    </div>
+    <ul id="plist"></ul>
+    <div id="lobbyStatus" class="muted"></div>
+    <button id="bStart" class="big">&#9654; Start Game</button>
+    <button id="bLeave" class="ghost">Leave</button>
+  </div>
+</div>
+
+<div id="upgrade" class="screen clear">
+  <div class="panel uppanel">
+    <h2 id="upTitle">Wave cleared!</h2>
+    <div class="muted">Pick an upgrade (click or press 1 / 2 / 3)</div>
+    <div class="cards" id="cards"></div>
+    <div id="upWait" class="muted"></div>
+  </div>
+</div>
+
+<div id="over" class="screen">
+  <div class="panel">
+    <h2>Squad down!</h2>
+    <div class="muted">TEAM SCORE</div>
+    <div class="big-score" id="ovScore">0</div>
+    <div id="ovBest" class="muted"></div>
+    <div class="stats" id="ovStats"></div>
+    <button id="bAgain" class="big">&#8635; Play Again</button>
+    <div id="ovWait" class="muted" style="display:none">Waiting for the host to start again&hellip;</div>
+    <button id="bMenu" class="ghost">Main Menu</button>
+  </div>
+</div>
+
+<div id="pause" class="screen">
+  <div class="panel">
+    <h2>Paused</h2>
+    <button id="bResume" class="big">Resume</button>
+    <button id="bQuit" class="ghost">Quit to menu</button>
+  </div>
+</div>
+
+<div id="connecting" class="screen">
+  <div class="panel">
+    <h2 id="connTitle">Connecting&hellip;</h2>
+    <p class="muted" id="connMsg"></p>
+    <button id="bConnCancel" class="ghost">Cancel</button>
+  </div>
+</div>
+
+<div id="hudbtns"><button id="hMute" class="ghost">Sound</button><button id="hAuto" class="ghost">Auto-aim</button><button id="hPause" class="ghost">II</button></div>
+<div id="toast"></div>
+
+<script>/*! PeerJS v1.5.4 | MIT License | https://peerjs.com */
+(()=>{function e(e,t,n,r){Object.defineProperty(e,t,{get:n,set:r,enumerable:!0,configurable:!0})}function t(e){return e&&e.__esModule?e.default:e}class n{constructor(){this.chunkedMTU=16300,this._dataCount=1,this.chunk=e=>{let t=[],n=e.byteLength,r=Math.ceil(n/this.chunkedMTU),i=0,o=0;for(;o<n;){let s=Math.min(n,o+this.chunkedMTU),a=e.slice(o,s),c={__peerData:this._dataCount,n:i,data:a,total:r};t.push(c),o=s,i++}return this._dataCount++,t}}}class r{append_buffer(e){this.flush(),this._parts.push(e)}append(e){this._pieces.push(e)}flush(){if(this._pieces.length>0){let e=new Uint8Array(this._pieces);this._parts.push(e),this._pieces=[]}}toArrayBuffer(){let e=[];for(let t of this._parts)e.push(t);return function(e){let t=0;for(let n of e)t+=n.byteLength;let n=new Uint8Array(t),r=0;for(let t of e){let e=new Uint8Array(t.buffer,t.byteOffset,t.byteLength);n.set(e,r),r+=t.byteLength}return n}(e).buffer}constructor(){this.encoder=new TextEncoder,this._pieces=[],this._parts=[]}}function i(e){return new s(e).unpack()}function o(e){let t=new a,n=t.pack(e);return n instanceof Promise?n.then(()=>t.getBuffer()):t.getBuffer()}class s{unpack(){let e;let t=this.unpack_uint8();if(t<128)return t;if((224^t)<32)return(224^t)-32;if((e=160^t)<=15)return this.unpack_raw(e);if((e=176^t)<=15)return this.unpack_string(e);if((e=144^t)<=15)return this.unpack_array(e);if((e=128^t)<=15)return this.unpack_map(e);switch(t){case 192:return null;case 193:case 212:case 213:case 214:case 215:return;case 194:return!1;case 195:return!0;case 202:return this.unpack_float();case 203:return this.unpack_double();case 204:return this.unpack_uint8();case 205:return this.unpack_uint16();case 206:return this.unpack_uint32();case 207:return this.unpack_uint64();case 208:return this.unpack_int8();case 209:return this.unpack_int16();case 210:return this.unpack_int32();case 211:return this.unpack_int64();case 216:return e=this.unpack_uint16(),this.unpack_string(e);case 217:return e=this.unpack_uint32(),this.unpack_string(e);case 218:return e=this.unpack_uint16(),this.unpack_raw(e);case 219:return e=this.unpack_uint32(),this.unpack_raw(e);case 220:return e=this.unpack_uint16(),this.unpack_array(e);case 221:return e=this.unpack_uint32(),this.unpack_array(e);case 222:return e=this.unpack_uint16(),this.unpack_map(e);case 223:return e=this.unpack_uint32(),this.unpack_map(e)}}unpack_uint8(){let e=255&this.dataView[this.index];return this.index++,e}unpack_uint16(){let e=this.read(2),t=(255&e[0])*256+(255&e[1]);return this.index+=2,t}unpack_uint32(){let e=this.read(4),t=((256*e[0]+e[1])*256+e[2])*256+e[3];return this.index+=4,t}unpack_uint64(){let e=this.read(8),t=((((((256*e[0]+e[1])*256+e[2])*256+e[3])*256+e[4])*256+e[5])*256+e[6])*256+e[7];return this.index+=8,t}unpack_int8(){let e=this.unpack_uint8();return e<128?e:e-256}unpack_int16(){let e=this.unpack_uint16();return e<32768?e:e-65536}unpack_int32(){let e=this.unpack_uint32();return e<2147483648?e:e-4294967296}unpack_int64(){let e=this.unpack_uint64();return e<0x7fffffffffffffff?e:e-18446744073709552e3}unpack_raw(e){if(this.length<this.index+e)throw Error(`BinaryPackFailure: index is out of range ${this.index} ${e} ${this.length}`);let t=this.dataBuffer.slice(this.index,this.index+e);return this.index+=e,t}unpack_string(e){let t,n;let r=this.read(e),i=0,o="";for(;i<e;)(t=r[i])<160?(n=t,i++):(192^t)<32?(n=(31&t)<<6|63&r[i+1],i+=2):(224^t)<16?(n=(15&t)<<12|(63&r[i+1])<<6|63&r[i+2],i+=3):(n=(7&t)<<18|(63&r[i+1])<<12|(63&r[i+2])<<6|63&r[i+3],i+=4),o+=String.fromCodePoint(n);return this.index+=e,o}unpack_array(e){let t=Array(e);for(let n=0;n<e;n++)t[n]=this.unpack();return t}unpack_map(e){let t={};for(let n=0;n<e;n++)t[this.unpack()]=this.unpack();return t}unpack_float(){let e=this.unpack_uint32();return(0==e>>31?1:-1)*(8388607&e|8388608)*2**((e>>23&255)-127-23)}unpack_double(){let e=this.unpack_uint32(),t=this.unpack_uint32(),n=(e>>20&2047)-1023;return(0==e>>31?1:-1)*((1048575&e|1048576)*2**(n-20)+t*2**(n-52))}read(e){let t=this.index;if(t+e<=this.length)return this.dataView.subarray(t,t+e);throw Error("BinaryPackFailure: read index out of range")}constructor(e){this.index=0,this.dataBuffer=e,this.dataView=new Uint8Array(this.dataBuffer),this.length=this.dataBuffer.byteLength}}class a{getBuffer(){return this._bufferBuilder.toArrayBuffer()}pack(e){if("string"==typeof e)this.pack_string(e);else if("number"==typeof e)Math.floor(e)===e?this.pack_integer(e):this.pack_double(e);else if("boolean"==typeof e)!0===e?this._bufferBuilder.append(195):!1===e&&this._bufferBuilder.append(194);else if(void 0===e)this._bufferBuilder.append(192);else if("object"==typeof e){if(null===e)this._bufferBuilder.append(192);else{let t=e.constructor;if(e instanceof Array){let t=this.pack_array(e);if(t instanceof Promise)return t.then(()=>this._bufferBuilder.flush())}else if(e instanceof ArrayBuffer)this.pack_bin(new Uint8Array(e));else if("BYTES_PER_ELEMENT"in e)this.pack_bin(new Uint8Array(e.buffer,e.byteOffset,e.byteLength));else if(e instanceof Date)this.pack_string(e.toString());else if(e instanceof Blob)return e.arrayBuffer().then(e=>{this.pack_bin(new Uint8Array(e)),this._bufferBuilder.flush()});else if(t==Object||t.toString().startsWith("class")){let t=this.pack_object(e);if(t instanceof Promise)return t.then(()=>this._bufferBuilder.flush())}else throw Error(`Type "${t.toString()}" not yet supported`)}}else throw Error(`Type "${typeof e}" not yet supported`);this._bufferBuilder.flush()}pack_bin(e){let t=e.length;if(t<=15)this.pack_uint8(160+t);else if(t<=65535)this._bufferBuilder.append(218),this.pack_uint16(t);else if(t<=4294967295)this._bufferBuilder.append(219),this.pack_uint32(t);else throw Error("Invalid length");this._bufferBuilder.append_buffer(e)}pack_string(e){let t=this._textEncoder.encode(e),n=t.length;if(n<=15)this.pack_uint8(176+n);else if(n<=65535)this._bufferBuilder.append(216),this.pack_uint16(n);else if(n<=4294967295)this._bufferBuilder.append(217),this.pack_uint32(n);else throw Error("Invalid length");this._bufferBuilder.append_buffer(t)}pack_array(e){let t=e.length;if(t<=15)this.pack_uint8(144+t);else if(t<=65535)this._bufferBuilder.append(220),this.pack_uint16(t);else if(t<=4294967295)this._bufferBuilder.append(221),this.pack_uint32(t);else throw Error("Invalid length");let n=r=>{if(r<t){let t=this.pack(e[r]);return t instanceof Promise?t.then(()=>n(r+1)):n(r+1)}};return n(0)}pack_integer(e){if(e>=-32&&e<=127)this._bufferBuilder.append(255&e);else if(e>=0&&e<=255)this._bufferBuilder.append(204),this.pack_uint8(e);else if(e>=-128&&e<=127)this._bufferBuilder.append(208),this.pack_int8(e);else if(e>=0&&e<=65535)this._bufferBuilder.append(205),this.pack_uint16(e);else if(e>=-32768&&e<=32767)this._bufferBuilder.append(209),this.pack_int16(e);else if(e>=0&&e<=4294967295)this._bufferBuilder.append(206),this.pack_uint32(e);else if(e>=-2147483648&&e<=2147483647)this._bufferBuilder.append(210),this.pack_int32(e);else if(e>=-0x8000000000000000&&e<=0x7fffffffffffffff)this._bufferBuilder.append(211),this.pack_int64(e);else if(e>=0&&e<=18446744073709552e3)this._bufferBuilder.append(207),this.pack_uint64(e);else throw Error("Invalid integer")}pack_double(e){let t=0;e<0&&(t=1,e=-e);let n=Math.floor(Math.log(e)/Math.LN2),r=Math.floor((e/2**n-1)*4503599627370496),i=t<<31|n+1023<<20|r/4294967296&1048575;this._bufferBuilder.append(203),this.pack_int32(i),this.pack_int32(r%4294967296)}pack_object(e){let t=Object.keys(e),n=t.length;if(n<=15)this.pack_uint8(128+n);else if(n<=65535)this._bufferBuilder.append(222),this.pack_uint16(n);else if(n<=4294967295)this._bufferBuilder.append(223),this.pack_uint32(n);else throw Error("Invalid length");let r=n=>{if(n<t.length){let i=t[n];if(e.hasOwnProperty(i)){this.pack(i);let t=this.pack(e[i]);if(t instanceof Promise)return t.then(()=>r(n+1))}return r(n+1)}};return r(0)}pack_uint8(e){this._bufferBuilder.append(e)}pack_uint16(e){this._bufferBuilder.append(e>>8),this._bufferBuilder.append(255&e)}pack_uint32(e){let t=4294967295&e;this._bufferBuilder.append((4278190080&t)>>>24),this._bufferBuilder.append((16711680&t)>>>16),this._bufferBuilder.append((65280&t)>>>8),this._bufferBuilder.append(255&t)}pack_uint64(e){let t=e/4294967296,n=e%4294967296;this._bufferBuilder.append((4278190080&t)>>>24),this._bufferBuilder.append((16711680&t)>>>16),this._bufferBuilder.append((65280&t)>>>8),this._bufferBuilder.append(255&t),this._bufferBuilder.append((4278190080&n)>>>24),this._bufferBuilder.append((16711680&n)>>>16),this._bufferBuilder.append((65280&n)>>>8),this._bufferBuilder.append(255&n)}pack_int8(e){this._bufferBuilder.append(255&e)}pack_int16(e){this._bufferBuilder.append((65280&e)>>8),this._bufferBuilder.append(255&e)}pack_int32(e){this._bufferBuilder.append(e>>>24&255),this._bufferBuilder.append((16711680&e)>>>16),this._bufferBuilder.append((65280&e)>>>8),this._bufferBuilder.append(255&e)}pack_int64(e){let t=Math.floor(e/4294967296),n=e%4294967296;this._bufferBuilder.append((4278190080&t)>>>24),this._bufferBuilder.append((16711680&t)>>>16),this._bufferBuilder.append((65280&t)>>>8),this._bufferBuilder.append(255&t),this._bufferBuilder.append((4278190080&n)>>>24),this._bufferBuilder.append((16711680&n)>>>16),this._bufferBuilder.append((65280&n)>>>8),this._bufferBuilder.append(255&n)}constructor(){this._bufferBuilder=new r,this._textEncoder=new TextEncoder}}let c=!0,l=!0;function p(e,t,n){let r=e.match(t);return r&&r.length>=n&&parseInt(r[n],10)}function d(e,t,n){if(!e.RTCPeerConnection)return;let r=e.RTCPeerConnection.prototype,i=r.addEventListener;r.addEventListener=function(e,r){if(e!==t)return i.apply(this,arguments);let o=e=>{let t=n(e);t&&(r.handleEvent?r.handleEvent(t):r(t))};return this._eventMap=this._eventMap||{},this._eventMap[t]||(this._eventMap[t]=new Map),this._eventMap[t].set(r,o),i.apply(this,[e,o])};let o=r.removeEventListener;r.removeEventListener=function(e,n){if(e!==t||!this._eventMap||!this._eventMap[t]||!this._eventMap[t].has(n))return o.apply(this,arguments);let r=this._eventMap[t].get(n);return this._eventMap[t].delete(n),0===this._eventMap[t].size&&delete this._eventMap[t],0===Object.keys(this._eventMap).length&&delete this._eventMap,o.apply(this,[e,r])},Object.defineProperty(r,"on"+t,{get(){return this["_on"+t]},set(e){this["_on"+t]&&(this.removeEventListener(t,this["_on"+t]),delete this["_on"+t]),e&&this.addEventListener(t,this["_on"+t]=e)},enumerable:!0,configurable:!0})}function h(e){return"boolean"!=typeof e?Error("Argument type: "+typeof e+". Please use a boolean."):(c=e,e?"adapter.js logging disabled":"adapter.js logging enabled")}function u(e){return"boolean"!=typeof e?Error("Argument type: "+typeof e+". Please use a boolean."):(l=!e,"adapter.js deprecation warnings "+(e?"disabled":"enabled"))}function f(){"object"!=typeof window||c||"undefined"==typeof console||"function"!=typeof console.log||console.log.apply(console,arguments)}function m(e,t){l&&console.warn(e+" is deprecated, please use "+t+" instead.")}function g(e){return"[object Object]"===Object.prototype.toString.call(e)}function y(e,t,n){let r=n?"outbound-rtp":"inbound-rtp",i=new Map;if(null===t)return i;let o=[];return e.forEach(e=>{"track"===e.type&&e.trackIdentifier===t.id&&o.push(e)}),o.forEach(t=>{e.forEach(n=>{n.type===r&&n.trackId===t.id&&function e(t,n,r){!n||r.has(n.id)||(r.set(n.id,n),Object.keys(n).forEach(i=>{i.endsWith("Id")?e(t,t.get(n[i]),r):i.endsWith("Ids")&&n[i].forEach(n=>{e(t,t.get(n),r)})}))}(e,n,i)})}),i}var _,C,b,v,k,T,S,R,P,w,E,D,x,I,M,O,j={};function L(e,t){let n=e&&e.navigator;if(!n.mediaDevices)return;let r=function(e){if("object"!=typeof e||e.mandatory||e.optional)return e;let t={};return Object.keys(e).forEach(n=>{if("require"===n||"advanced"===n||"mediaSource"===n)return;let r="object"==typeof e[n]?e[n]:{ideal:e[n]};void 0!==r.exact&&"number"==typeof r.exact&&(r.min=r.max=r.exact);let i=function(e,t){return e?e+t.charAt(0).toUpperCase()+t.slice(1):"deviceId"===t?"sourceId":t};if(void 0!==r.ideal){t.optional=t.optional||[];let e={};"number"==typeof r.ideal?(e[i("min",n)]=r.ideal,t.optional.push(e),(e={})[i("max",n)]=r.ideal):e[i("",n)]=r.ideal,t.optional.push(e)}void 0!==r.exact&&"number"!=typeof r.exact?(t.mandatory=t.mandatory||{},t.mandatory[i("",n)]=r.exact):["min","max"].forEach(e=>{void 0!==r[e]&&(t.mandatory=t.mandatory||{},t.mandatory[i(e,n)]=r[e])})}),e.advanced&&(t.optional=(t.optional||[]).concat(e.advanced)),t},i=function(e,i){if(t.version>=61)return i(e);if((e=JSON.parse(JSON.stringify(e)))&&"object"==typeof e.audio){let t=function(e,t,n){t in e&&!(n in e)&&(e[n]=e[t],delete e[t])};t((e=JSON.parse(JSON.stringify(e))).audio,"autoGainControl","googAutoGainControl"),t(e.audio,"noiseSuppression","googNoiseSuppression"),e.audio=r(e.audio)}if(e&&"object"==typeof e.video){let o=e.video.facingMode;o=o&&("object"==typeof o?o:{ideal:o});let s=t.version<66;if(o&&("user"===o.exact||"environment"===o.exact||"user"===o.ideal||"environment"===o.ideal)&&!(n.mediaDevices.getSupportedConstraints&&n.mediaDevices.getSupportedConstraints().facingMode&&!s)){let t;if(delete e.video.facingMode,"environment"===o.exact||"environment"===o.ideal?t=["back","rear"]:("user"===o.exact||"user"===o.ideal)&&(t=["front"]),t)return n.mediaDevices.enumerateDevices().then(n=>{let s=(n=n.filter(e=>"videoinput"===e.kind)).find(e=>t.some(t=>e.label.toLowerCase().includes(t)));return!s&&n.length&&t.includes("back")&&(s=n[n.length-1]),s&&(e.video.deviceId=o.exact?{exact:s.deviceId}:{ideal:s.deviceId}),e.video=r(e.video),f("chrome: "+JSON.stringify(e)),i(e)})}e.video=r(e.video)}return f("chrome: "+JSON.stringify(e)),i(e)},o=function(e){return t.version>=64?e:{name:({PermissionDeniedError:"NotAllowedError",PermissionDismissedError:"NotAllowedError",InvalidStateError:"NotAllowedError",DevicesNotFoundError:"NotFoundError",ConstraintNotSatisfiedError:"OverconstrainedError",TrackStartError:"NotReadableError",MediaDeviceFailedDueToShutdown:"NotAllowedError",MediaDeviceKillSwitchOn:"NotAllowedError",TabCaptureError:"AbortError",ScreenCaptureError:"AbortError",DeviceCaptureError:"AbortError"})[e.name]||e.name,message:e.message,constraint:e.constraint||e.constraintName,toString(){return this.name+(this.message&&": ")+this.message}}};if(n.getUserMedia=(function(e,t,r){i(e,e=>{n.webkitGetUserMedia(e,t,e=>{r&&r(o(e))})})}).bind(n),n.mediaDevices.getUserMedia){let e=n.mediaDevices.getUserMedia.bind(n.mediaDevices);n.mediaDevices.getUserMedia=function(t){return i(t,t=>e(t).then(e=>{if(t.audio&&!e.getAudioTracks().length||t.video&&!e.getVideoTracks().length)throw e.getTracks().forEach(e=>{e.stop()}),new DOMException("","NotFoundError");return e},e=>Promise.reject(o(e))))}}}function A(e){e.MediaStream=e.MediaStream||e.webkitMediaStream}function B(e){if("object"!=typeof e||!e.RTCPeerConnection||"ontrack"in e.RTCPeerConnection.prototype)d(e,"track",e=>(e.transceiver||Object.defineProperty(e,"transceiver",{value:{receiver:e.receiver}}),e));else{Object.defineProperty(e.RTCPeerConnection.prototype,"ontrack",{get(){return this._ontrack},set(e){this._ontrack&&this.removeEventListener("track",this._ontrack),this.addEventListener("track",this._ontrack=e)},enumerable:!0,configurable:!0});let t=e.RTCPeerConnection.prototype.setRemoteDescription;e.RTCPeerConnection.prototype.setRemoteDescription=function(){return this._ontrackpoly||(this._ontrackpoly=t=>{t.stream.addEventListener("addtrack",n=>{let r;r=e.RTCPeerConnection.prototype.getReceivers?this.getReceivers().find(e=>e.track&&e.track.id===n.track.id):{track:n.track};let i=new Event("track");i.track=n.track,i.receiver=r,i.transceiver={receiver:r},i.streams=[t.stream],this.dispatchEvent(i)}),t.stream.getTracks().forEach(n=>{let r;r=e.RTCPeerConnection.prototype.getReceivers?this.getReceivers().find(e=>e.track&&e.track.id===n.id):{track:n};let i=new Event("track");i.track=n,i.receiver=r,i.transceiver={receiver:r},i.streams=[t.stream],this.dispatchEvent(i)})},this.addEventListener("addstream",this._ontrackpoly)),t.apply(this,arguments)}}}function F(e){if("object"==typeof e&&e.RTCPeerConnection&&!("getSenders"in e.RTCPeerConnection.prototype)&&"createDTMFSender"in e.RTCPeerConnection.prototype){let t=function(e,t){return{track:t,get dtmf(){return void 0===this._dtmf&&("audio"===t.kind?this._dtmf=e.createDTMFSender(t):this._dtmf=null),this._dtmf},_pc:e}};if(!e.RTCPeerConnection.prototype.getSenders){e.RTCPeerConnection.prototype.getSenders=function(){return this._senders=this._senders||[],this._senders.slice()};let n=e.RTCPeerConnection.prototype.addTrack;e.RTCPeerConnection.prototype.addTrack=function(e,r){let i=n.apply(this,arguments);return i||(i=t(this,e),this._senders.push(i)),i};let r=e.RTCPeerConnection.prototype.removeTrack;e.RTCPeerConnection.prototype.removeTrack=function(e){r.apply(this,arguments);let t=this._senders.indexOf(e);-1!==t&&this._senders.splice(t,1)}}let n=e.RTCPeerConnection.prototype.addStream;e.RTCPeerConnection.prototype.addStream=function(e){this._senders=this._senders||[],n.apply(this,[e]),e.getTracks().forEach(e=>{this._senders.push(t(this,e))})};let r=e.RTCPeerConnection.prototype.removeStream;e.RTCPeerConnection.prototype.removeStream=function(e){this._senders=this._senders||[],r.apply(this,[e]),e.getTracks().forEach(e=>{let t=this._senders.find(t=>t.track===e);t&&this._senders.splice(this._senders.indexOf(t),1)})}}else if("object"==typeof e&&e.RTCPeerConnection&&"getSenders"in e.RTCPeerConnection.prototype&&"createDTMFSender"in e.RTCPeerConnection.prototype&&e.RTCRtpSender&&!("dtmf"in e.RTCRtpSender.prototype)){let t=e.RTCPeerConnection.prototype.getSenders;e.RTCPeerConnection.prototype.getSenders=function(){let e=t.apply(this,[]);return e.forEach(e=>e._pc=this),e},Object.defineProperty(e.RTCRtpSender.prototype,"dtmf",{get(){return void 0===this._dtmf&&("audio"===this.track.kind?this._dtmf=this._pc.createDTMFSender(this.track):this._dtmf=null),this._dtmf}})}}function U(e){if(!("object"==typeof e&&e.RTCPeerConnection&&e.RTCRtpSender&&e.RTCRtpReceiver))return;if(!("getStats"in e.RTCRtpSender.prototype)){let t=e.RTCPeerConnection.prototype.getSenders;t&&(e.RTCPeerConnection.prototype.getSenders=function(){let e=t.apply(this,[]);return e.forEach(e=>e._pc=this),e});let n=e.RTCPeerConnection.prototype.addTrack;n&&(e.RTCPeerConnection.prototype.addTrack=function(){let e=n.apply(this,arguments);return e._pc=this,e}),e.RTCRtpSender.prototype.getStats=function(){let e=this;return this._pc.getStats().then(t=>y(t,e.track,!0))}}if(!("getStats"in e.RTCRtpReceiver.prototype)){let t=e.RTCPeerConnection.prototype.getReceivers;t&&(e.RTCPeerConnection.prototype.getReceivers=function(){let e=t.apply(this,[]);return e.forEach(e=>e._pc=this),e}),d(e,"track",e=>(e.receiver._pc=e.srcElement,e)),e.RTCRtpReceiver.prototype.getStats=function(){let e=this;return this._pc.getStats().then(t=>y(t,e.track,!1))}}if(!("getStats"in e.RTCRtpSender.prototype&&"getStats"in e.RTCRtpReceiver.prototype))return;let t=e.RTCPeerConnection.prototype.getStats;e.RTCPeerConnection.prototype.getStats=function(){if(arguments.length>0&&arguments[0]instanceof e.MediaStreamTrack){let e,t,n;let r=arguments[0];return(this.getSenders().forEach(t=>{t.track===r&&(e?n=!0:e=t)}),this.getReceivers().forEach(e=>(e.track===r&&(t?n=!0:t=e),e.track===r)),n||e&&t)?Promise.reject(new DOMException("There are more than one sender or receiver for the track.","InvalidAccessError")):e?e.getStats():t?t.getStats():Promise.reject(new DOMException("There is no sender or receiver for the track.","InvalidAccessError"))}return t.apply(this,arguments)}}function z(e){e.RTCPeerConnection.prototype.getLocalStreams=function(){return this._shimmedLocalStreams=this._shimmedLocalStreams||{},Object.keys(this._shimmedLocalStreams).map(e=>this._shimmedLocalStreams[e][0])};let t=e.RTCPeerConnection.prototype.addTrack;e.RTCPeerConnection.prototype.addTrack=function(e,n){if(!n)return t.apply(this,arguments);this._shimmedLocalStreams=this._shimmedLocalStreams||{};let r=t.apply(this,arguments);return this._shimmedLocalStreams[n.id]?-1===this._shimmedLocalStreams[n.id].indexOf(r)&&this._shimmedLocalStreams[n.id].push(r):this._shimmedLocalStreams[n.id]=[n,r],r};let n=e.RTCPeerConnection.prototype.addStream;e.RTCPeerConnection.prototype.addStream=function(e){this._shimmedLocalStreams=this._shimmedLocalStreams||{},e.getTracks().forEach(e=>{if(this.getSenders().find(t=>t.track===e))throw new DOMException("Track already exists.","InvalidAccessError")});let t=this.getSenders();n.apply(this,arguments);let r=this.getSenders().filter(e=>-1===t.indexOf(e));this._shimmedLocalStreams[e.id]=[e].concat(r)};let r=e.RTCPeerConnection.prototype.removeStream;e.RTCPeerConnection.prototype.removeStream=function(e){return this._shimmedLocalStreams=this._shimmedLocalStreams||{},delete this._shimmedLocalStreams[e.id],r.apply(this,arguments)};let i=e.RTCPeerConnection.prototype.removeTrack;e.RTCPeerConnection.prototype.removeTrack=function(e){return this._shimmedLocalStreams=this._shimmedLocalStreams||{},e&&Object.keys(this._shimmedLocalStreams).forEach(t=>{let n=this._shimmedLocalStreams[t].indexOf(e);-1!==n&&this._shimmedLocalStreams[t].splice(n,1),1===this._shimmedLocalStreams[t].length&&delete this._shimmedLocalStreams[t]}),i.apply(this,arguments)}}function N(e,t){if(!e.RTCPeerConnection)return;if(e.RTCPeerConnection.prototype.addTrack&&t.version>=65)return z(e);let n=e.RTCPeerConnection.prototype.getLocalStreams;e.RTCPeerConnection.prototype.getLocalStreams=function(){let e=n.apply(this);return this._reverseStreams=this._reverseStreams||{},e.map(e=>this._reverseStreams[e.id])};let r=e.RTCPeerConnection.prototype.addStream;e.RTCPeerConnection.prototype.addStream=function(t){if(this._streams=this._streams||{},this._reverseStreams=this._reverseStreams||{},t.getTracks().forEach(e=>{if(this.getSenders().find(t=>t.track===e))throw new DOMException("Track already exists.","InvalidAccessError")}),!this._reverseStreams[t.id]){let n=new e.MediaStream(t.getTracks());this._streams[t.id]=n,this._reverseStreams[n.id]=t,t=n}r.apply(this,[t])};let i=e.RTCPeerConnection.prototype.removeStream;function o(e,t){let n=t.sdp;return Object.keys(e._reverseStreams||[]).forEach(t=>{let r=e._reverseStreams[t],i=e._streams[r.id];n=n.replace(RegExp(i.id,"g"),r.id)}),new RTCSessionDescription({type:t.type,sdp:n})}e.RTCPeerConnection.prototype.removeStream=function(e){this._streams=this._streams||{},this._reverseStreams=this._reverseStreams||{},i.apply(this,[this._streams[e.id]||e]),delete this._reverseStreams[this._streams[e.id]?this._streams[e.id].id:e.id],delete this._streams[e.id]},e.RTCPeerConnection.prototype.addTrack=function(t,n){if("closed"===this.signalingState)throw new DOMException("The RTCPeerConnection's signalingState is 'closed'.","InvalidStateError");let r=[].slice.call(arguments,1);if(1!==r.length||!r[0].getTracks().find(e=>e===t))throw new DOMException("The adapter.js addTrack polyfill only supports a single  stream which is associated with the specified track.","NotSupportedError");if(this.getSenders().find(e=>e.track===t))throw new DOMException("Track already exists.","InvalidAccessError");this._streams=this._streams||{},this._reverseStreams=this._reverseStreams||{};let i=this._streams[n.id];if(i)i.addTrack(t),Promise.resolve().then(()=>{this.dispatchEvent(new Event("negotiationneeded"))});else{let r=new e.MediaStream([t]);this._streams[n.id]=r,this._reverseStreams[r.id]=n,this.addStream(r)}return this.getSenders().find(e=>e.track===t)},["createOffer","createAnswer"].forEach(function(t){let n=e.RTCPeerConnection.prototype[t];e.RTCPeerConnection.prototype[t]=({[t](){let e=arguments,t=arguments.length&&"function"==typeof arguments[0];return t?n.apply(this,[t=>{let n=o(this,t);e[0].apply(null,[n])},t=>{e[1]&&e[1].apply(null,t)},arguments[2]]):n.apply(this,arguments).then(e=>o(this,e))}})[t]});let s=e.RTCPeerConnection.prototype.setLocalDescription;e.RTCPeerConnection.prototype.setLocalDescription=function(){var e,t;let n;return arguments.length&&arguments[0].type&&(arguments[0]=(e=this,t=arguments[0],n=t.sdp,Object.keys(e._reverseStreams||[]).forEach(t=>{let r=e._reverseStreams[t],i=e._streams[r.id];n=n.replace(RegExp(r.id,"g"),i.id)}),new RTCSessionDescription({type:t.type,sdp:n}))),s.apply(this,arguments)};let a=Object.getOwnPropertyDescriptor(e.RTCPeerConnection.prototype,"localDescription");Object.defineProperty(e.RTCPeerConnection.prototype,"localDescription",{get(){let e=a.get.apply(this);return""===e.type?e:o(this,e)}}),e.RTCPeerConnection.prototype.removeTrack=function(e){let t;if("closed"===this.signalingState)throw new DOMException("The RTCPeerConnection's signalingState is 'closed'.","InvalidStateError");if(!e._pc)throw new DOMException("Argument 1 of RTCPeerConnection.removeTrack does not implement interface RTCRtpSender.","TypeError");if(e._pc!==this)throw new DOMException("Sender was not created by this connection.","InvalidAccessError");this._streams=this._streams||{},Object.keys(this._streams).forEach(n=>{this._streams[n].getTracks().find(t=>e.track===t)&&(t=this._streams[n])}),t&&(1===t.getTracks().length?this.removeStream(this._reverseStreams[t.id]):t.removeTrack(e.track),this.dispatchEvent(new Event("negotiationneeded")))}}function $(e,t){!e.RTCPeerConnection&&e.webkitRTCPeerConnection&&(e.RTCPeerConnection=e.webkitRTCPeerConnection),e.RTCPeerConnection&&t.version<53&&["setLocalDescription","setRemoteDescription","addIceCandidate"].forEach(function(t){let n=e.RTCPeerConnection.prototype[t];e.RTCPeerConnection.prototype[t]=({[t](){return arguments[0]=new("addIceCandidate"===t?e.RTCIceCandidate:e.RTCSessionDescription)(arguments[0]),n.apply(this,arguments)}})[t]})}function J(e,t){d(e,"negotiationneeded",e=>{let n=e.target;if(!(t.version<72)&&(!n.getConfiguration||"plan-b"!==n.getConfiguration().sdpSemantics)||"stable"===n.signalingState)return e})}e(j,"shimMediaStream",()=>A),e(j,"shimOnTrack",()=>B),e(j,"shimGetSendersWithDtmf",()=>F),e(j,"shimSenderReceiverGetStats",()=>U),e(j,"shimAddTrackRemoveTrackWithNative",()=>z),e(j,"shimAddTrackRemoveTrack",()=>N),e(j,"shimPeerConnection",()=>$),e(j,"fixNegotiationNeeded",()=>J),e(j,"shimGetUserMedia",()=>L);var V={};function G(e,t){let n=e&&e.navigator,r=e&&e.MediaStreamTrack;if(n.getUserMedia=function(e,t,r){m("navigator.getUserMedia","navigator.mediaDevices.getUserMedia"),n.mediaDevices.getUserMedia(e).then(t,r)},!(t.version>55&&"autoGainControl"in n.mediaDevices.getSupportedConstraints())){let e=function(e,t,n){t in e&&!(n in e)&&(e[n]=e[t],delete e[t])},t=n.mediaDevices.getUserMedia.bind(n.mediaDevices);if(n.mediaDevices.getUserMedia=function(n){return"object"==typeof n&&"object"==typeof n.audio&&(e((n=JSON.parse(JSON.stringify(n))).audio,"autoGainControl","mozAutoGainControl"),e(n.audio,"noiseSuppression","mozNoiseSuppression")),t(n)},r&&r.prototype.getSettings){let t=r.prototype.getSettings;r.prototype.getSettings=function(){let n=t.apply(this,arguments);return e(n,"mozAutoGainControl","autoGainControl"),e(n,"mozNoiseSuppression","noiseSuppression"),n}}if(r&&r.prototype.applyConstraints){let t=r.prototype.applyConstraints;r.prototype.applyConstraints=function(n){return"audio"===this.kind&&"object"==typeof n&&(e(n=JSON.parse(JSON.stringify(n)),"autoGainControl","mozAutoGainControl"),e(n,"noiseSuppression","mozNoiseSuppression")),t.apply(this,[n])}}}}function W(e,t){e.navigator.mediaDevices&&"getDisplayMedia"in e.navigator.mediaDevices||!e.navigator.mediaDevices||(e.navigator.mediaDevices.getDisplayMedia=function(n){if(!(n&&n.video)){let e=new DOMException("getDisplayMedia without video constraints is undefined");return e.name="NotFoundError",e.code=8,Promise.reject(e)}return!0===n.video?n.video={mediaSource:t}:n.video.mediaSource=t,e.navigator.mediaDevices.getUserMedia(n)})}function H(e){"object"==typeof e&&e.RTCTrackEvent&&"receiver"in e.RTCTrackEvent.prototype&&!("transceiver"in e.RTCTrackEvent.prototype)&&Object.defineProperty(e.RTCTrackEvent.prototype,"transceiver",{get(){return{receiver:this.receiver}}})}function Y(e,t){if("object"!=typeof e||!(e.RTCPeerConnection||e.mozRTCPeerConnection))return;!e.RTCPeerConnection&&e.mozRTCPeerConnection&&(e.RTCPeerConnection=e.mozRTCPeerConnection),t.version<53&&["setLocalDescription","setRemoteDescription","addIceCandidate"].forEach(function(t){let n=e.RTCPeerConnection.prototype[t];e.RTCPeerConnection.prototype[t]=({[t](){return arguments[0]=new("addIceCandidate"===t?e.RTCIceCandidate:e.RTCSessionDescription)(arguments[0]),n.apply(this,arguments)}})[t]});let n={inboundrtp:"inbound-rtp",outboundrtp:"outbound-rtp",candidatepair:"candidate-pair",localcandidate:"local-candidate",remotecandidate:"remote-candidate"},r=e.RTCPeerConnection.prototype.getStats;e.RTCPeerConnection.prototype.getStats=function(){let[e,i,o]=arguments;return r.apply(this,[e||null]).then(e=>{if(t.version<53&&!i)try{e.forEach(e=>{e.type=n[e.type]||e.type})}catch(t){if("TypeError"!==t.name)throw t;e.forEach((t,r)=>{e.set(r,Object.assign({},t,{type:n[t.type]||t.type}))})}return e}).then(i,o)}}function K(e){if(!("object"==typeof e&&e.RTCPeerConnection&&e.RTCRtpSender)||e.RTCRtpSender&&"getStats"in e.RTCRtpSender.prototype)return;let t=e.RTCPeerConnection.prototype.getSenders;t&&(e.RTCPeerConnection.prototype.getSenders=function(){let e=t.apply(this,[]);return e.forEach(e=>e._pc=this),e});let n=e.RTCPeerConnection.prototype.addTrack;n&&(e.RTCPeerConnection.prototype.addTrack=function(){let e=n.apply(this,arguments);return e._pc=this,e}),e.RTCRtpSender.prototype.getStats=function(){return this.track?this._pc.getStats(this.track):Promise.resolve(new Map)}}function X(e){if(!("object"==typeof e&&e.RTCPeerConnection&&e.RTCRtpSender)||e.RTCRtpSender&&"getStats"in e.RTCRtpReceiver.prototype)return;let t=e.RTCPeerConnection.prototype.getReceivers;t&&(e.RTCPeerConnection.prototype.getReceivers=function(){let e=t.apply(this,[]);return e.forEach(e=>e._pc=this),e}),d(e,"track",e=>(e.receiver._pc=e.srcElement,e)),e.RTCRtpReceiver.prototype.getStats=function(){return this._pc.getStats(this.track)}}function q(e){!e.RTCPeerConnection||"removeStream"in e.RTCPeerConnection.prototype||(e.RTCPeerConnection.prototype.removeStream=function(e){m("removeStream","removeTrack"),this.getSenders().forEach(t=>{t.track&&e.getTracks().includes(t.track)&&this.removeTrack(t)})})}function Q(e){e.DataChannel&&!e.RTCDataChannel&&(e.RTCDataChannel=e.DataChannel)}function Z(e){if(!("object"==typeof e&&e.RTCPeerConnection))return;let t=e.RTCPeerConnection.prototype.addTransceiver;t&&(e.RTCPeerConnection.prototype.addTransceiver=function(){this.setParametersPromises=[];let e=arguments[1]&&arguments[1].sendEncodings;void 0===e&&(e=[]);let n=(e=[...e]).length>0;n&&e.forEach(e=>{if("rid"in e&&!/^[a-z0-9]{0,16}$/i.test(e.rid))throw TypeError("Invalid RID value provided.");if("scaleResolutionDownBy"in e&&!(parseFloat(e.scaleResolutionDownBy)>=1))throw RangeError("scale_resolution_down_by must be >= 1.0");if("maxFramerate"in e&&!(parseFloat(e.maxFramerate)>=0))throw RangeError("max_framerate must be >= 0.0")});let r=t.apply(this,arguments);if(n){let{sender:t}=r,n=t.getParameters();"encodings"in n&&(1!==n.encodings.length||0!==Object.keys(n.encodings[0]).length)||(n.encodings=e,t.sendEncodings=e,this.setParametersPromises.push(t.setParameters(n).then(()=>{delete t.sendEncodings}).catch(()=>{delete t.sendEncodings})))}return r})}function ee(e){if(!("object"==typeof e&&e.RTCRtpSender))return;let t=e.RTCRtpSender.prototype.getParameters;t&&(e.RTCRtpSender.prototype.getParameters=function(){let e=t.apply(this,arguments);return"encodings"in e||(e.encodings=[].concat(this.sendEncodings||[{}])),e})}function et(e){if(!("object"==typeof e&&e.RTCPeerConnection))return;let t=e.RTCPeerConnection.prototype.createOffer;e.RTCPeerConnection.prototype.createOffer=function(){return this.setParametersPromises&&this.setParametersPromises.length?Promise.all(this.setParametersPromises).then(()=>t.apply(this,arguments)).finally(()=>{this.setParametersPromises=[]}):t.apply(this,arguments)}}function en(e){if(!("object"==typeof e&&e.RTCPeerConnection))return;let t=e.RTCPeerConnection.prototype.createAnswer;e.RTCPeerConnection.prototype.createAnswer=function(){return this.setParametersPromises&&this.setParametersPromises.length?Promise.all(this.setParametersPromises).then(()=>t.apply(this,arguments)).finally(()=>{this.setParametersPromises=[]}):t.apply(this,arguments)}}e(V,"shimOnTrack",()=>H),e(V,"shimPeerConnection",()=>Y),e(V,"shimSenderGetStats",()=>K),e(V,"shimReceiverGetStats",()=>X),e(V,"shimRemoveStream",()=>q),e(V,"shimRTCDataChannel",()=>Q),e(V,"shimAddTransceiver",()=>Z),e(V,"shimGetParameters",()=>ee),e(V,"shimCreateOffer",()=>et),e(V,"shimCreateAnswer",()=>en),e(V,"shimGetUserMedia",()=>G),e(V,"shimGetDisplayMedia",()=>W);var er={};function ei(e){if("object"==typeof e&&e.RTCPeerConnection){if("getLocalStreams"in e.RTCPeerConnection.prototype||(e.RTCPeerConnection.prototype.getLocalStreams=function(){return this._localStreams||(this._localStreams=[]),this._localStreams}),!("addStream"in e.RTCPeerConnection.prototype)){let t=e.RTCPeerConnection.prototype.addTrack;e.RTCPeerConnection.prototype.addStream=function(e){this._localStreams||(this._localStreams=[]),this._localStreams.includes(e)||this._localStreams.push(e),e.getAudioTracks().forEach(n=>t.call(this,n,e)),e.getVideoTracks().forEach(n=>t.call(this,n,e))},e.RTCPeerConnection.prototype.addTrack=function(e,...n){return n&&n.forEach(e=>{this._localStreams?this._localStreams.includes(e)||this._localStreams.push(e):this._localStreams=[e]}),t.apply(this,arguments)}}"removeStream"in e.RTCPeerConnection.prototype||(e.RTCPeerConnection.prototype.removeStream=function(e){this._localStreams||(this._localStreams=[]);let t=this._localStreams.indexOf(e);if(-1===t)return;this._localStreams.splice(t,1);let n=e.getTracks();this.getSenders().forEach(e=>{n.includes(e.track)&&this.removeTrack(e)})})}}function eo(e){if("object"==typeof e&&e.RTCPeerConnection&&("getRemoteStreams"in e.RTCPeerConnection.prototype||(e.RTCPeerConnection.prototype.getRemoteStreams=function(){return this._remoteStreams?this._remoteStreams:[]}),!("onaddstream"in e.RTCPeerConnection.prototype))){Object.defineProperty(e.RTCPeerConnection.prototype,"onaddstream",{get(){return this._onaddstream},set(e){this._onaddstream&&(this.removeEventListener("addstream",this._onaddstream),this.removeEventListener("track",this._onaddstreampoly)),this.addEventListener("addstream",this._onaddstream=e),this.addEventListener("track",this._onaddstreampoly=e=>{e.streams.forEach(e=>{if(this._remoteStreams||(this._remoteStreams=[]),this._remoteStreams.includes(e))return;this._remoteStreams.push(e);let t=new Event("addstream");t.stream=e,this.dispatchEvent(t)})})}});let t=e.RTCPeerConnection.prototype.setRemoteDescription;e.RTCPeerConnection.prototype.setRemoteDescription=function(){let e=this;return this._onaddstreampoly||this.addEventListener("track",this._onaddstreampoly=function(t){t.streams.forEach(t=>{if(e._remoteStreams||(e._remoteStreams=[]),e._remoteStreams.indexOf(t)>=0)return;e._remoteStreams.push(t);let n=new Event("addstream");n.stream=t,e.dispatchEvent(n)})}),t.apply(e,arguments)}}}function es(e){if("object"!=typeof e||!e.RTCPeerConnection)return;let t=e.RTCPeerConnection.prototype,n=t.createOffer,r=t.createAnswer,i=t.setLocalDescription,o=t.setRemoteDescription,s=t.addIceCandidate;t.createOffer=function(e,t){let r=arguments.length>=2?arguments[2]:arguments[0],i=n.apply(this,[r]);return t?(i.then(e,t),Promise.resolve()):i},t.createAnswer=function(e,t){let n=arguments.length>=2?arguments[2]:arguments[0],i=r.apply(this,[n]);return t?(i.then(e,t),Promise.resolve()):i};let a=function(e,t,n){let r=i.apply(this,[e]);return n?(r.then(t,n),Promise.resolve()):r};t.setLocalDescription=a,a=function(e,t,n){let r=o.apply(this,[e]);return n?(r.then(t,n),Promise.resolve()):r},t.setRemoteDescription=a,a=function(e,t,n){let r=s.apply(this,[e]);return n?(r.then(t,n),Promise.resolve()):r},t.addIceCandidate=a}function ea(e){let t=e&&e.navigator;if(t.mediaDevices&&t.mediaDevices.getUserMedia){let e=t.mediaDevices,n=e.getUserMedia.bind(e);t.mediaDevices.getUserMedia=e=>n(ec(e))}!t.getUserMedia&&t.mediaDevices&&t.mediaDevices.getUserMedia&&(t.getUserMedia=(function(e,n,r){t.mediaDevices.getUserMedia(e).then(n,r)}).bind(t))}function ec(e){return e&&void 0!==e.video?Object.assign({},e,{video:function e(t){return g(t)?Object.keys(t).reduce(function(n,r){let i=g(t[r]),o=i?e(t[r]):t[r],s=i&&!Object.keys(o).length;return void 0===o||s?n:Object.assign(n,{[r]:o})},{}):t}(e.video)}):e}function el(e){if(!e.RTCPeerConnection)return;let t=e.RTCPeerConnection;e.RTCPeerConnection=function(e,n){if(e&&e.iceServers){let t=[];for(let n=0;n<e.iceServers.length;n++){let r=e.iceServers[n];void 0===r.urls&&r.url?(m("RTCIceServer.url","RTCIceServer.urls"),(r=JSON.parse(JSON.stringify(r))).urls=r.url,delete r.url,t.push(r)):t.push(e.iceServers[n])}e.iceServers=t}return new t(e,n)},e.RTCPeerConnection.prototype=t.prototype,"generateCertificate"in t&&Object.defineProperty(e.RTCPeerConnection,"generateCertificate",{get:()=>t.generateCertificate})}function ep(e){"object"==typeof e&&e.RTCTrackEvent&&"receiver"in e.RTCTrackEvent.prototype&&!("transceiver"in e.RTCTrackEvent.prototype)&&Object.defineProperty(e.RTCTrackEvent.prototype,"transceiver",{get(){return{receiver:this.receiver}}})}function ed(e){let t=e.RTCPeerConnection.prototype.createOffer;e.RTCPeerConnection.prototype.createOffer=function(e){if(e){void 0!==e.offerToReceiveAudio&&(e.offerToReceiveAudio=!!e.offerToReceiveAudio);let t=this.getTransceivers().find(e=>"audio"===e.receiver.track.kind);!1===e.offerToReceiveAudio&&t?"sendrecv"===t.direction?t.setDirection?t.setDirection("sendonly"):t.direction="sendonly":"recvonly"===t.direction&&(t.setDirection?t.setDirection("inactive"):t.direction="inactive"):!0!==e.offerToReceiveAudio||t||this.addTransceiver("audio",{direction:"recvonly"}),void 0!==e.offerToReceiveVideo&&(e.offerToReceiveVideo=!!e.offerToReceiveVideo);let n=this.getTransceivers().find(e=>"video"===e.receiver.track.kind);!1===e.offerToReceiveVideo&&n?"sendrecv"===n.direction?n.setDirection?n.setDirection("sendonly"):n.direction="sendonly":"recvonly"===n.direction&&(n.setDirection?n.setDirection("inactive"):n.direction="inactive"):!0!==e.offerToReceiveVideo||n||this.addTransceiver("video",{direction:"recvonly"})}return t.apply(this,arguments)}}function eh(e){"object"!=typeof e||e.AudioContext||(e.AudioContext=e.webkitAudioContext)}e(er,"shimLocalStreamsAPI",()=>ei),e(er,"shimRemoteStreamsAPI",()=>eo),e(er,"shimCallbacksAPI",()=>es),e(er,"shimGetUserMedia",()=>ea),e(er,"shimConstraints",()=>ec),e(er,"shimRTCIceServerUrls",()=>el),e(er,"shimTrackEventTransceiver",()=>ep),e(er,"shimCreateOfferLegacy",()=>ed),e(er,"shimAudioContext",()=>eh);var eu={};e(eu,"shimRTCIceCandidate",()=>eg),e(eu,"shimRTCIceCandidateRelayProtocol",()=>ey),e(eu,"shimMaxMessageSize",()=>e_),e(eu,"shimSendThrowTypeError",()=>eC),e(eu,"shimConnectionState",()=>eb),e(eu,"removeExtmapAllowMixed",()=>ev),e(eu,"shimAddIceCandidateNullOrEmpty",()=>ek),e(eu,"shimParameterlessSetLocalDescription",()=>eT);var ef={};let em={};function eg(e){if(!e.RTCIceCandidate||e.RTCIceCandidate&&"foundation"in e.RTCIceCandidate.prototype)return;let n=e.RTCIceCandidate;e.RTCIceCandidate=function(e){if("object"==typeof e&&e.candidate&&0===e.candidate.indexOf("a=")&&((e=JSON.parse(JSON.stringify(e))).candidate=e.candidate.substring(2)),e.candidate&&e.candidate.length){let r=new n(e),i=t(ef).parseCandidate(e.candidate);for(let e in i)e in r||Object.defineProperty(r,e,{value:i[e]});return r.toJSON=function(){return{candidate:r.candidate,sdpMid:r.sdpMid,sdpMLineIndex:r.sdpMLineIndex,usernameFragment:r.usernameFragment}},r}return new n(e)},e.RTCIceCandidate.prototype=n.prototype,d(e,"icecandidate",t=>(t.candidate&&Object.defineProperty(t,"candidate",{value:new e.RTCIceCandidate(t.candidate),writable:"false"}),t))}function ey(e){!e.RTCIceCandidate||e.RTCIceCandidate&&"relayProtocol"in e.RTCIceCandidate.prototype||d(e,"icecandidate",e=>{if(e.candidate){let n=t(ef).parseCandidate(e.candidate.candidate);"relay"===n.type&&(e.candidate.relayProtocol=({0:"tls",1:"tcp",2:"udp"})[n.priority>>24])}return e})}function e_(e,n){if(!e.RTCPeerConnection)return;"sctp"in e.RTCPeerConnection.prototype||Object.defineProperty(e.RTCPeerConnection.prototype,"sctp",{get(){return void 0===this._sctp?null:this._sctp}});let r=function(e){if(!e||!e.sdp)return!1;let n=t(ef).splitSections(e.sdp);return n.shift(),n.some(e=>{let n=t(ef).parseMLine(e);return n&&"application"===n.kind&&-1!==n.protocol.indexOf("SCTP")})},i=function(e){let t=e.sdp.match(/mozilla...THIS_IS_SDPARTA-(\d+)/);if(null===t||t.length<2)return -1;let n=parseInt(t[1],10);return n!=n?-1:n},o=function(e){let t=65536;return"firefox"===n.browser&&(t=n.version<57?-1===e?16384:2147483637:n.version<60?57===n.version?65535:65536:2147483637),t},s=function(e,r){let i=65536;"firefox"===n.browser&&57===n.version&&(i=65535);let o=t(ef).matchPrefix(e.sdp,"a=max-message-size:");return o.length>0?i=parseInt(o[0].substring(19),10):"firefox"===n.browser&&-1!==r&&(i=2147483637),i},a=e.RTCPeerConnection.prototype.setRemoteDescription;e.RTCPeerConnection.prototype.setRemoteDescription=function(){if(this._sctp=null,"chrome"===n.browser&&n.version>=76){let{sdpSemantics:e}=this.getConfiguration();"plan-b"===e&&Object.defineProperty(this,"sctp",{get(){return void 0===this._sctp?null:this._sctp},enumerable:!0,configurable:!0})}if(r(arguments[0])){let e;let t=i(arguments[0]),n=o(t),r=s(arguments[0],t);e=0===n&&0===r?Number.POSITIVE_INFINITY:0===n||0===r?Math.max(n,r):Math.min(n,r);let a={};Object.defineProperty(a,"maxMessageSize",{get:()=>e}),this._sctp=a}return a.apply(this,arguments)}}function eC(e){if(!(e.RTCPeerConnection&&"createDataChannel"in e.RTCPeerConnection.prototype))return;function t(e,t){let n=e.send;e.send=function(){let r=arguments[0],i=r.length||r.size||r.byteLength;if("open"===e.readyState&&t.sctp&&i>t.sctp.maxMessageSize)throw TypeError("Message too large (can send a maximum of "+t.sctp.maxMessageSize+" bytes)");return n.apply(e,arguments)}}let n=e.RTCPeerConnection.prototype.createDataChannel;e.RTCPeerConnection.prototype.createDataChannel=function(){let e=n.apply(this,arguments);return t(e,this),e},d(e,"datachannel",e=>(t(e.channel,e.target),e))}function eb(e){if(!e.RTCPeerConnection||"connectionState"in e.RTCPeerConnection.prototype)return;let t=e.RTCPeerConnection.prototype;Object.defineProperty(t,"connectionState",{get(){return({completed:"connected",checking:"connecting"})[this.iceConnectionState]||this.iceConnectionState},enumerable:!0,configurable:!0}),Object.defineProperty(t,"onconnectionstatechange",{get(){return this._onconnectionstatechange||null},set(e){this._onconnectionstatechange&&(this.removeEventListener("connectionstatechange",this._onconnectionstatechange),delete this._onconnectionstatechange),e&&this.addEventListener("connectionstatechange",this._onconnectionstatechange=e)},enumerable:!0,configurable:!0}),["setLocalDescription","setRemoteDescription"].forEach(e=>{let n=t[e];t[e]=function(){return this._connectionstatechangepoly||(this._connectionstatechangepoly=e=>{let t=e.target;if(t._lastConnectionState!==t.connectionState){t._lastConnectionState=t.connectionState;let n=new Event("connectionstatechange",e);t.dispatchEvent(n)}return e},this.addEventListener("iceconnectionstatechange",this._connectionstatechangepoly)),n.apply(this,arguments)}})}function ev(e,t){if(!e.RTCPeerConnection||"chrome"===t.browser&&t.version>=71||"safari"===t.browser&&t.version>=605)return;let n=e.RTCPeerConnection.prototype.setRemoteDescription;e.RTCPeerConnection.prototype.setRemoteDescription=function(t){if(t&&t.sdp&&-1!==t.sdp.indexOf("\na=extmap-allow-mixed")){let n=t.sdp.split("\n").filter(e=>"a=extmap-allow-mixed"!==e.trim()).join("\n");e.RTCSessionDescription&&t instanceof e.RTCSessionDescription?arguments[0]=new e.RTCSessionDescription({type:t.type,sdp:n}):t.sdp=n}return n.apply(this,arguments)}}function ek(e,t){if(!(e.RTCPeerConnection&&e.RTCPeerConnection.prototype))return;let n=e.RTCPeerConnection.prototype.addIceCandidate;n&&0!==n.length&&(e.RTCPeerConnection.prototype.addIceCandidate=function(){return arguments[0]?("chrome"===t.browser&&t.version<78||"firefox"===t.browser&&t.version<68||"safari"===t.browser)&&arguments[0]&&""===arguments[0].candidate?Promise.resolve():n.apply(this,arguments):(arguments[1]&&arguments[1].apply(null),Promise.resolve())})}function eT(e,t){if(!(e.RTCPeerConnection&&e.RTCPeerConnection.prototype))return;let n=e.RTCPeerConnection.prototype.setLocalDescription;n&&0!==n.length&&(e.RTCPeerConnection.prototype.setLocalDescription=function(){let e=arguments[0]||{};if("object"!=typeof e||e.type&&e.sdp)return n.apply(this,arguments);if(!(e={type:e.type,sdp:e.sdp}).type)switch(this.signalingState){case"stable":case"have-local-offer":case"have-remote-pranswer":e.type="offer";break;default:e.type="answer"}return e.sdp||"offer"!==e.type&&"answer"!==e.type?n.apply(this,[e]):("offer"===e.type?this.createOffer:this.createAnswer).apply(this).then(e=>n.apply(this,[e]))})}em.generateIdentifier=function(){return Math.random().toString(36).substring(2,12)},em.localCName=em.generateIdentifier(),em.splitLines=function(e){return e.trim().split("\n").map(e=>e.trim())},em.splitSections=function(e){return e.split("\nm=").map((e,t)=>(t>0?"m="+e:e).trim()+"\r\n")},em.getDescription=function(e){let t=em.splitSections(e);return t&&t[0]},em.getMediaSections=function(e){let t=em.splitSections(e);return t.shift(),t},em.matchPrefix=function(e,t){return em.splitLines(e).filter(e=>0===e.indexOf(t))},em.parseCandidate=function(e){let t;let n={foundation:(t=0===e.indexOf("a=candidate:")?e.substring(12).split(" "):e.substring(10).split(" "))[0],component:{1:"rtp",2:"rtcp"}[t[1]]||t[1],protocol:t[2].toLowerCase(),priority:parseInt(t[3],10),ip:t[4],address:t[4],port:parseInt(t[5],10),type:t[7]};for(let e=8;e<t.length;e+=2)switch(t[e]){case"raddr":n.relatedAddress=t[e+1];break;case"rport":n.relatedPort=parseInt(t[e+1],10);break;case"tcptype":n.tcpType=t[e+1];break;case"ufrag":n.ufrag=t[e+1],n.usernameFragment=t[e+1];break;default:void 0===n[t[e]]&&(n[t[e]]=t[e+1])}return n},em.writeCandidate=function(e){let t=[];t.push(e.foundation);let n=e.component;"rtp"===n?t.push(1):"rtcp"===n?t.push(2):t.push(n),t.push(e.protocol.toUpperCase()),t.push(e.priority),t.push(e.address||e.ip),t.push(e.port);let r=e.type;return t.push("typ"),t.push(r),"host"!==r&&e.relatedAddress&&e.relatedPort&&(t.push("raddr"),t.push(e.relatedAddress),t.push("rport"),t.push(e.relatedPort)),e.tcpType&&"tcp"===e.protocol.toLowerCase()&&(t.push("tcptype"),t.push(e.tcpType)),(e.usernameFragment||e.ufrag)&&(t.push("ufrag"),t.push(e.usernameFragment||e.ufrag)),"candidate:"+t.join(" ")},em.parseIceOptions=function(e){return e.substring(14).split(" ")},em.parseRtpMap=function(e){let t=e.substring(9).split(" "),n={payloadType:parseInt(t.shift(),10)};return t=t[0].split("/"),n.name=t[0],n.clockRate=parseInt(t[1],10),n.channels=3===t.length?parseInt(t[2],10):1,n.numChannels=n.channels,n},em.writeRtpMap=function(e){let t=e.payloadType;void 0!==e.preferredPayloadType&&(t=e.preferredPayloadType);let n=e.channels||e.numChannels||1;return"a=rtpmap:"+t+" "+e.name+"/"+e.clockRate+(1!==n?"/"+n:"")+"\r\n"},em.parseExtmap=function(e){let t=e.substring(9).split(" ");return{id:parseInt(t[0],10),direction:t[0].indexOf("/")>0?t[0].split("/")[1]:"sendrecv",uri:t[1],attributes:t.slice(2).join(" ")}},em.writeExtmap=function(e){return"a=extmap:"+(e.id||e.preferredId)+(e.direction&&"sendrecv"!==e.direction?"/"+e.direction:"")+" "+e.uri+(e.attributes?" "+e.attributes:"")+"\r\n"},em.parseFmtp=function(e){let t;let n={},r=e.substring(e.indexOf(" ")+1).split(";");for(let e=0;e<r.length;e++)n[(t=r[e].trim().split("="))[0].trim()]=t[1];return n},em.writeFmtp=function(e){let t="",n=e.payloadType;if(void 0!==e.preferredPayloadType&&(n=e.preferredPayloadType),e.parameters&&Object.keys(e.parameters).length){let r=[];Object.keys(e.parameters).forEach(t=>{void 0!==e.parameters[t]?r.push(t+"="+e.parameters[t]):r.push(t)}),t+="a=fmtp:"+n+" "+r.join(";")+"\r\n"}return t},em.parseRtcpFb=function(e){let t=e.substring(e.indexOf(" ")+1).split(" ");return{type:t.shift(),parameter:t.join(" ")}},em.writeRtcpFb=function(e){let t="",n=e.payloadType;return void 0!==e.preferredPayloadType&&(n=e.preferredPayloadType),e.rtcpFeedback&&e.rtcpFeedback.length&&e.rtcpFeedback.forEach(e=>{t+="a=rtcp-fb:"+n+" "+e.type+(e.parameter&&e.parameter.length?" "+e.parameter:"")+"\r\n"}),t},em.parseSsrcMedia=function(e){let t=e.indexOf(" "),n={ssrc:parseInt(e.substring(7,t),10)},r=e.indexOf(":",t);return r>-1?(n.attribute=e.substring(t+1,r),n.value=e.substring(r+1)):n.attribute=e.substring(t+1),n},em.parseSsrcGroup=function(e){let t=e.substring(13).split(" ");return{semantics:t.shift(),ssrcs:t.map(e=>parseInt(e,10))}},em.getMid=function(e){let t=em.matchPrefix(e,"a=mid:")[0];if(t)return t.substring(6)},em.parseFingerprint=function(e){let t=e.substring(14).split(" ");return{algorithm:t[0].toLowerCase(),value:t[1].toUpperCase()}},em.getDtlsParameters=function(e,t){return{role:"auto",fingerprints:em.matchPrefix(e+t,"a=fingerprint:").map(em.parseFingerprint)}},em.writeDtlsParameters=function(e,t){let n="a=setup:"+t+"\r\n";return e.fingerprints.forEach(e=>{n+="a=fingerprint:"+e.algorithm+" "+e.value+"\r\n"}),n},em.parseCryptoLine=function(e){let t=e.substring(9).split(" ");return{tag:parseInt(t[0],10),cryptoSuite:t[1],keyParams:t[2],sessionParams:t.slice(3)}},em.writeCryptoLine=function(e){return"a=crypto:"+e.tag+" "+e.cryptoSuite+" "+("object"==typeof e.keyParams?em.writeCryptoKeyParams(e.keyParams):e.keyParams)+(e.sessionParams?" "+e.sessionParams.join(" "):"")+"\r\n"},em.parseCryptoKeyParams=function(e){if(0!==e.indexOf("inline:"))return null;let t=e.substring(7).split("|");return{keyMethod:"inline",keySalt:t[0],lifeTime:t[1],mkiValue:t[2]?t[2].split(":")[0]:void 0,mkiLength:t[2]?t[2].split(":")[1]:void 0}},em.writeCryptoKeyParams=function(e){return e.keyMethod+":"+e.keySalt+(e.lifeTime?"|"+e.lifeTime:"")+(e.mkiValue&&e.mkiLength?"|"+e.mkiValue+":"+e.mkiLength:"")},em.getCryptoParameters=function(e,t){return em.matchPrefix(e+t,"a=crypto:").map(em.parseCryptoLine)},em.getIceParameters=function(e,t){let n=em.matchPrefix(e+t,"a=ice-ufrag:")[0],r=em.matchPrefix(e+t,"a=ice-pwd:")[0];return n&&r?{usernameFragment:n.substring(12),password:r.substring(10)}:null},em.writeIceParameters=function(e){let t="a=ice-ufrag:"+e.usernameFragment+"\r\na=ice-pwd:"+e.password+"\r\n";return e.iceLite&&(t+="a=ice-lite\r\n"),t},em.parseRtpParameters=function(e){let t={codecs:[],headerExtensions:[],fecMechanisms:[],rtcp:[]},n=em.splitLines(e)[0].split(" ");t.profile=n[2];for(let r=3;r<n.length;r++){let i=n[r],o=em.matchPrefix(e,"a=rtpmap:"+i+" ")[0];if(o){let n=em.parseRtpMap(o),r=em.matchPrefix(e,"a=fmtp:"+i+" ");switch(n.parameters=r.length?em.parseFmtp(r[0]):{},n.rtcpFeedback=em.matchPrefix(e,"a=rtcp-fb:"+i+" ").map(em.parseRtcpFb),t.codecs.push(n),n.name.toUpperCase()){case"RED":case"ULPFEC":t.fecMechanisms.push(n.name.toUpperCase())}}}em.matchPrefix(e,"a=extmap:").forEach(e=>{t.headerExtensions.push(em.parseExtmap(e))});let r=em.matchPrefix(e,"a=rtcp-fb:* ").map(em.parseRtcpFb);return t.codecs.forEach(e=>{r.forEach(t=>{e.rtcpFeedback.find(e=>e.type===t.type&&e.parameter===t.parameter)||e.rtcpFeedback.push(t)})}),t},em.writeRtpDescription=function(e,t){let n="";n+="m="+e+" "+(t.codecs.length>0?"9":"0")+" "+(t.profile||"UDP/TLS/RTP/SAVPF")+" "+t.codecs.map(e=>void 0!==e.preferredPayloadType?e.preferredPayloadType:e.payloadType).join(" ")+"\r\nc=IN IP4 0.0.0.0\r\na=rtcp:9 IN IP4 0.0.0.0\r\n",t.codecs.forEach(e=>{n+=em.writeRtpMap(e)+em.writeFmtp(e)+em.writeRtcpFb(e)});let r=0;return t.codecs.forEach(e=>{e.maxptime>r&&(r=e.maxptime)}),r>0&&(n+="a=maxptime:"+r+"\r\n"),t.headerExtensions&&t.headerExtensions.forEach(e=>{n+=em.writeExtmap(e)}),n},em.parseRtpEncodingParameters=function(e){let t;let n=[],r=em.parseRtpParameters(e),i=-1!==r.fecMechanisms.indexOf("RED"),o=-1!==r.fecMechanisms.indexOf("ULPFEC"),s=em.matchPrefix(e,"a=ssrc:").map(e=>em.parseSsrcMedia(e)).filter(e=>"cname"===e.attribute),a=s.length>0&&s[0].ssrc,c=em.matchPrefix(e,"a=ssrc-group:FID").map(e=>e.substring(17).split(" ").map(e=>parseInt(e,10)));c.length>0&&c[0].length>1&&c[0][0]===a&&(t=c[0][1]),r.codecs.forEach(e=>{if("RTX"===e.name.toUpperCase()&&e.parameters.apt){let r={ssrc:a,codecPayloadType:parseInt(e.parameters.apt,10)};a&&t&&(r.rtx={ssrc:t}),n.push(r),i&&((r=JSON.parse(JSON.stringify(r))).fec={ssrc:a,mechanism:o?"red+ulpfec":"red"},n.push(r))}}),0===n.length&&a&&n.push({ssrc:a});let l=em.matchPrefix(e,"b=");return l.length&&(l=0===l[0].indexOf("b=TIAS:")?parseInt(l[0].substring(7),10):0===l[0].indexOf("b=AS:")?950*parseInt(l[0].substring(5),10)-16e3:void 0,n.forEach(e=>{e.maxBitrate=l})),n},em.parseRtcpParameters=function(e){let t={},n=em.matchPrefix(e,"a=ssrc:").map(e=>em.parseSsrcMedia(e)).filter(e=>"cname"===e.attribute)[0];n&&(t.cname=n.value,t.ssrc=n.ssrc);let r=em.matchPrefix(e,"a=rtcp-rsize");t.reducedSize=r.length>0,t.compound=0===r.length;let i=em.matchPrefix(e,"a=rtcp-mux");return t.mux=i.length>0,t},em.writeRtcpParameters=function(e){let t="";return e.reducedSize&&(t+="a=rtcp-rsize\r\n"),e.mux&&(t+="a=rtcp-mux\r\n"),void 0!==e.ssrc&&e.cname&&(t+="a=ssrc:"+e.ssrc+" cname:"+e.cname+"\r\n"),t},em.parseMsid=function(e){let t;let n=em.matchPrefix(e,"a=msid:");if(1===n.length)return{stream:(t=n[0].substring(7).split(" "))[0],track:t[1]};let r=em.matchPrefix(e,"a=ssrc:").map(e=>em.parseSsrcMedia(e)).filter(e=>"msid"===e.attribute);if(r.length>0)return{stream:(t=r[0].value.split(" "))[0],track:t[1]}},em.parseSctpDescription=function(e){let t;let n=em.parseMLine(e),r=em.matchPrefix(e,"a=max-message-size:");r.length>0&&(t=parseInt(r[0].substring(19),10)),isNaN(t)&&(t=65536);let i=em.matchPrefix(e,"a=sctp-port:");if(i.length>0)return{port:parseInt(i[0].substring(12),10),protocol:n.fmt,maxMessageSize:t};let o=em.matchPrefix(e,"a=sctpmap:");if(o.length>0){let e=o[0].substring(10).split(" ");return{port:parseInt(e[0],10),protocol:e[1],maxMessageSize:t}}},em.writeSctpDescription=function(e,t){let n=[];return n="DTLS/SCTP"!==e.protocol?["m="+e.kind+" 9 "+e.protocol+" "+t.protocol+"\r\n","c=IN IP4 0.0.0.0\r\n","a=sctp-port:"+t.port+"\r\n"]:["m="+e.kind+" 9 "+e.protocol+" "+t.port+"\r\n","c=IN IP4 0.0.0.0\r\n","a=sctpmap:"+t.port+" "+t.protocol+" 65535\r\n"],void 0!==t.maxMessageSize&&n.push("a=max-message-size:"+t.maxMessageSize+"\r\n"),n.join("")},em.generateSessionId=function(){return Math.random().toString().substr(2,22)},em.writeSessionBoilerplate=function(e,t,n){return"v=0\r\no="+(n||"thisisadapterortc")+" "+(e||em.generateSessionId())+" "+(void 0!==t?t:2)+" IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\n"},em.getDirection=function(e,t){let n=em.splitLines(e);for(let e=0;e<n.length;e++)switch(n[e]){case"a=sendrecv":case"a=sendonly":case"a=recvonly":case"a=inactive":return n[e].substring(2)}return t?em.getDirection(t):"sendrecv"},em.getKind=function(e){return em.splitLines(e)[0].split(" ")[0].substring(2)},em.isRejected=function(e){return"0"===e.split(" ",2)[1]},em.parseMLine=function(e){let t=em.splitLines(e)[0].substring(2).split(" ");return{kind:t[0],port:parseInt(t[1],10),protocol:t[2],fmt:t.slice(3).join(" ")}},em.parseOLine=function(e){let t=em.matchPrefix(e,"o=")[0].substring(2).split(" ");return{username:t[0],sessionId:t[1],sessionVersion:parseInt(t[2],10),netType:t[3],addressType:t[4],address:t[5]}},em.isValidSDP=function(e){if("string"!=typeof e||0===e.length)return!1;let t=em.splitLines(e);for(let e=0;e<t.length;e++)if(t[e].length<2||"="!==t[e].charAt(1))return!1;return!0},ef=em;let eS=function({window:e}={},t={shimChrome:!0,shimFirefox:!0,shimSafari:!0}){let n=function(e){let t={browser:null,version:null};if(void 0===e||!e.navigator||!e.navigator.userAgent)return t.browser="Not a browser.",t;let{navigator:n}=e;if(n.userAgentData&&n.userAgentData.brands){let e=n.userAgentData.brands.find(e=>"Chromium"===e.brand);if(e)return{browser:"chrome",version:parseInt(e.version,10)}}return n.mozGetUserMedia?(t.browser="firefox",t.version=p(n.userAgent,/Firefox\/(\d+)\./,1)):n.webkitGetUserMedia||!1===e.isSecureContext&&e.webkitRTCPeerConnection?(t.browser="chrome",t.version=p(n.userAgent,/Chrom(e|ium)\/(\d+)\./,2)):e.RTCPeerConnection&&n.userAgent.match(/AppleWebKit\/(\d+)\./)?(t.browser="safari",t.version=p(n.userAgent,/AppleWebKit\/(\d+)\./,1),t.supportsUnifiedPlan=e.RTCRtpTransceiver&&"currentDirection"in e.RTCRtpTransceiver.prototype):t.browser="Not a supported browser.",t}(e),r={browserDetails:n,commonShim:eu,extractVersion:p,disableLog:h,disableWarnings:u,sdp:ef};switch(n.browser){case"chrome":if(!j||!j.shimPeerConnection||!t.shimChrome){f("Chrome shim is not included in this adapter release.");break}if(null===n.version){f("Chrome shim can not determine version, not shimming.");break}f("adapter.js shimming chrome."),r.browserShim=j,ek(e,n),eT(e,n),j.shimGetUserMedia(e,n),j.shimMediaStream(e,n),j.shimPeerConnection(e,n),j.shimOnTrack(e,n),j.shimAddTrackRemoveTrack(e,n),j.shimGetSendersWithDtmf(e,n),j.shimSenderReceiverGetStats(e,n),j.fixNegotiationNeeded(e,n),eg(e,n),ey(e,n),eb(e,n),e_(e,n),eC(e,n),ev(e,n);break;case"firefox":if(!V||!V.shimPeerConnection||!t.shimFirefox){f("Firefox shim is not included in this adapter release.");break}f("adapter.js shimming firefox."),r.browserShim=V,ek(e,n),eT(e,n),V.shimGetUserMedia(e,n),V.shimPeerConnection(e,n),V.shimOnTrack(e,n),V.shimRemoveStream(e,n),V.shimSenderGetStats(e,n),V.shimReceiverGetStats(e,n),V.shimRTCDataChannel(e,n),V.shimAddTransceiver(e,n),V.shimGetParameters(e,n),V.shimCreateOffer(e,n),V.shimCreateAnswer(e,n),eg(e,n),eb(e,n),e_(e,n),eC(e,n);break;case"safari":if(!er||!t.shimSafari){f("Safari shim is not included in this adapter release.");break}f("adapter.js shimming safari."),r.browserShim=er,ek(e,n),eT(e,n),er.shimRTCIceServerUrls(e,n),er.shimCreateOfferLegacy(e,n),er.shimCallbacksAPI(e,n),er.shimLocalStreamsAPI(e,n),er.shimRemoteStreamsAPI(e,n),er.shimTrackEventTransceiver(e,n),er.shimGetUserMedia(e,n),er.shimAudioContext(e,n),eg(e,n),ey(e,n),e_(e,n),eC(e,n),ev(e,n);break;default:f("Unsupported browser!")}return r}({window:"undefined"==typeof window?void 0:window}),eR=eS.default||eS,eP=new class{isWebRTCSupported(){return"undefined"!=typeof RTCPeerConnection}isBrowserSupported(){let e=this.getBrowser(),t=this.getVersion();return!!this.supportedBrowsers.includes(e)&&("chrome"===e?t>=this.minChromeVersion:"firefox"===e?t>=this.minFirefoxVersion:"safari"===e&&!this.isIOS&&t>=this.minSafariVersion)}getBrowser(){return eR.browserDetails.browser}getVersion(){return eR.browserDetails.version||0}isUnifiedPlanSupported(){let e;let t=this.getBrowser(),n=eR.browserDetails.version||0;if("chrome"===t&&n<this.minChromeVersion)return!1;if("firefox"===t&&n>=this.minFirefoxVersion)return!0;if(!window.RTCRtpTransceiver||!("currentDirection"in RTCRtpTransceiver.prototype))return!1;let r=!1;try{(e=new RTCPeerConnection).addTransceiver("audio"),r=!0}catch(e){}finally{e&&e.close()}return r}toString(){return`Supports:
+    browser:${this.getBrowser()}
+    version:${this.getVersion()}
+    isIOS:${this.isIOS}
+    isWebRTCSupported:${this.isWebRTCSupported()}
+    isBrowserSupported:${this.isBrowserSupported()}
+    isUnifiedPlanSupported:${this.isUnifiedPlanSupported()}`}constructor(){this.isIOS="undefined"!=typeof navigator&&["iPad","iPhone","iPod"].includes(navigator.platform),this.supportedBrowsers=["firefox","chrome","safari"],this.minFirefoxVersion=59,this.minChromeVersion=72,this.minSafariVersion=605}},ew=e=>!e||/^[A-Za-z0-9]+(?:[ _-][A-Za-z0-9]+)*$/.test(e),eE=()=>Math.random().toString(36).slice(2),eD={iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:["turn:eu-0.turn.peerjs.com:3478","turn:us-0.turn.peerjs.com:3478"],username:"peerjs",credential:"peerjsp"}],sdpSemantics:"unified-plan"},ex=new class extends n{noop(){}blobToArrayBuffer(e,t){let n=new FileReader;return n.onload=function(e){e.target&&t(e.target.result)},n.readAsArrayBuffer(e),n}binaryStringToArrayBuffer(e){let t=new Uint8Array(e.length);for(let n=0;n<e.length;n++)t[n]=255&e.charCodeAt(n);return t.buffer}isSecure(){return"https:"===location.protocol}constructor(...e){super(...e),this.CLOUD_HOST="0.peerjs.com",this.CLOUD_PORT=443,this.chunkedBrowsers={Chrome:1,chrome:1},this.defaultConfig=eD,this.browser=eP.getBrowser(),this.browserVersion=eP.getVersion(),this.pack=o,this.unpack=i,this.supports=function(){let e;let t={browser:eP.isBrowserSupported(),webRTC:eP.isWebRTCSupported(),audioVideo:!1,data:!1,binaryBlob:!1,reliable:!1};if(!t.webRTC)return t;try{let n;e=new RTCPeerConnection(eD),t.audioVideo=!0;try{n=e.createDataChannel("_PEERJSTEST",{ordered:!0}),t.data=!0,t.reliable=!!n.ordered;try{n.binaryType="blob",t.binaryBlob=!eP.isIOS}catch(e){}}catch(e){}finally{n&&n.close()}}catch(e){}finally{e&&e.close()}return t}(),this.validateId=ew,this.randomToken=eE}};(_=P||(P={}))[_.Disabled=0]="Disabled",_[_.Errors=1]="Errors",_[_.Warnings=2]="Warnings",_[_.All=3]="All";var eI=new class{get logLevel(){return this._logLevel}set logLevel(e){this._logLevel=e}log(...e){this._logLevel>=3&&this._print(3,...e)}warn(...e){this._logLevel>=2&&this._print(2,...e)}error(...e){this._logLevel>=1&&this._print(1,...e)}setLogFunction(e){this._print=e}_print(e,...t){let n=["PeerJS: ",...t];for(let e in n)n[e]instanceof Error&&(n[e]="("+n[e].name+") "+n[e].message);e>=3?console.log(...n):e>=2?console.warn("WARNING",...n):e>=1&&console.error("ERROR",...n)}constructor(){this._logLevel=0}},eM={},eO=Object.prototype.hasOwnProperty,ej="~";function eL(){}function eA(e,t,n){this.fn=e,this.context=t,this.once=n||!1}function eB(e,t,n,r,i){if("function"!=typeof n)throw TypeError("The listener must be a function");var o=new eA(n,r||e,i),s=ej?ej+t:t;return e._events[s]?e._events[s].fn?e._events[s]=[e._events[s],o]:e._events[s].push(o):(e._events[s]=o,e._eventsCount++),e}function eF(e,t){0==--e._eventsCount?e._events=new eL:delete e._events[t]}function eU(){this._events=new eL,this._eventsCount=0}Object.create&&(eL.prototype=Object.create(null),new eL().__proto__||(ej=!1)),eU.prototype.eventNames=function(){var e,t,n=[];if(0===this._eventsCount)return n;for(t in e=this._events)eO.call(e,t)&&n.push(ej?t.slice(1):t);return Object.getOwnPropertySymbols?n.concat(Object.getOwnPropertySymbols(e)):n},eU.prototype.listeners=function(e){var t=ej?ej+e:e,n=this._events[t];if(!n)return[];if(n.fn)return[n.fn];for(var r=0,i=n.length,o=Array(i);r<i;r++)o[r]=n[r].fn;return o},eU.prototype.listenerCount=function(e){var t=ej?ej+e:e,n=this._events[t];return n?n.fn?1:n.length:0},eU.prototype.emit=function(e,t,n,r,i,o){var s=ej?ej+e:e;if(!this._events[s])return!1;var a,c,l=this._events[s],p=arguments.length;if(l.fn){switch(l.once&&this.removeListener(e,l.fn,void 0,!0),p){case 1:return l.fn.call(l.context),!0;case 2:return l.fn.call(l.context,t),!0;case 3:return l.fn.call(l.context,t,n),!0;case 4:return l.fn.call(l.context,t,n,r),!0;case 5:return l.fn.call(l.context,t,n,r,i),!0;case 6:return l.fn.call(l.context,t,n,r,i,o),!0}for(c=1,a=Array(p-1);c<p;c++)a[c-1]=arguments[c];l.fn.apply(l.context,a)}else{var d,h=l.length;for(c=0;c<h;c++)switch(l[c].once&&this.removeListener(e,l[c].fn,void 0,!0),p){case 1:l[c].fn.call(l[c].context);break;case 2:l[c].fn.call(l[c].context,t);break;case 3:l[c].fn.call(l[c].context,t,n);break;case 4:l[c].fn.call(l[c].context,t,n,r);break;default:if(!a)for(d=1,a=Array(p-1);d<p;d++)a[d-1]=arguments[d];l[c].fn.apply(l[c].context,a)}}return!0},eU.prototype.on=function(e,t,n){return eB(this,e,t,n,!1)},eU.prototype.once=function(e,t,n){return eB(this,e,t,n,!0)},eU.prototype.removeListener=function(e,t,n,r){var i=ej?ej+e:e;if(!this._events[i])return this;if(!t)return eF(this,i),this;var o=this._events[i];if(o.fn)o.fn!==t||r&&!o.once||n&&o.context!==n||eF(this,i);else{for(var s=0,a=[],c=o.length;s<c;s++)(o[s].fn!==t||r&&!o[s].once||n&&o[s].context!==n)&&a.push(o[s]);a.length?this._events[i]=1===a.length?a[0]:a:eF(this,i)}return this},eU.prototype.removeAllListeners=function(e){var t;return e?(t=ej?ej+e:e,this._events[t]&&eF(this,t)):(this._events=new eL,this._eventsCount=0),this},eU.prototype.off=eU.prototype.removeListener,eU.prototype.addListener=eU.prototype.on,eU.prefixed=ej,eU.EventEmitter=eU,eM=eU,(C=w||(w={})).Data="data",C.Media="media",(b=E||(E={})).BrowserIncompatible="browser-incompatible",b.Disconnected="disconnected",b.InvalidID="invalid-id",b.InvalidKey="invalid-key",b.Network="network",b.PeerUnavailable="peer-unavailable",b.SslUnavailable="ssl-unavailable",b.ServerError="server-error",b.SocketError="socket-error",b.SocketClosed="socket-closed",b.UnavailableID="unavailable-id",b.WebRTC="webrtc",(v=D||(D={})).NegotiationFailed="negotiation-failed",v.ConnectionClosed="connection-closed",(k=x||(x={})).NotOpenYet="not-open-yet",k.MessageToBig="message-too-big",(T=I||(I={})).Binary="binary",T.BinaryUTF8="binary-utf8",T.JSON="json",T.None="raw",(S=M||(M={})).Message="message",S.Disconnected="disconnected",S.Error="error",S.Close="close",(R=O||(O={})).Heartbeat="HEARTBEAT",R.Candidate="CANDIDATE",R.Offer="OFFER",R.Answer="ANSWER",R.Open="OPEN",R.Error="ERROR",R.IdTaken="ID-TAKEN",R.InvalidKey="INVALID-KEY",R.Leave="LEAVE",R.Expire="EXPIRE";var ez={};ez=JSON.parse('{"name":"peerjs","version":"1.5.4","keywords":["peerjs","webrtc","p2p","rtc"],"description":"PeerJS client","homepage":"https://peerjs.com","bugs":{"url":"https://github.com/peers/peerjs/issues"},"repository":{"type":"git","url":"https://github.com/peers/peerjs"},"license":"MIT","contributors":["Michelle Bu <michelle@michellebu.com>","afrokick <devbyru@gmail.com>","ericz <really.ez@gmail.com>","Jairo <kidandcat@gmail.com>","Jonas Gloning <34194370+jonasgloning@users.noreply.github.com>","Jairo Caro-Accino Viciana <jairo@galax.be>","Carlos Caballero <carlos.caballero.gonzalez@gmail.com>","hc <hheennrryy@gmail.com>","Muhammad Asif <capripio@gmail.com>","PrashoonB <prashoonbhattacharjee@gmail.com>","Harsh Bardhan Mishra <47351025+HarshCasper@users.noreply.github.com>","akotynski <aleksanderkotbury@gmail.com>","lmb <i@lmb.io>","Jairooo <jairocaro@msn.com>","Moritz Stückler <moritz.stueckler@gmail.com>","Simon <crydotsnakegithub@gmail.com>","Denis Lukov <denismassters@gmail.com>","Philipp Hancke <fippo@andyet.net>","Hans Oksendahl <hansoksendahl@gmail.com>","Jess <jessachandler@gmail.com>","khankuan <khankuan@gmail.com>","DUODVK <kurmanov.work@gmail.com>","XiZhao <kwang1imsa@gmail.com>","Matthias Lohr <matthias@lohr.me>","=frank tree <=frnktrb@googlemail.com>","Andre Eckardt <aeckardt@outlook.com>","Chris Cowan <agentme49@gmail.com>","Alex Chuev <alex@chuev.com>","alxnull <alxnull@e.mail.de>","Yemel Jardi <angel.jardi@gmail.com>","Ben Parnell <benjaminparnell.94@gmail.com>","Benny Lichtner <bennlich@gmail.com>","fresheneesz <bitetrudpublic@gmail.com>","bob.barstead@exaptive.com <bob.barstead@exaptive.com>","chandika <chandika@gmail.com>","emersion <contact@emersion.fr>","Christopher Van <cvan@users.noreply.github.com>","eddieherm <edhermoso@gmail.com>","Eduardo Pinho <enet4mikeenet@gmail.com>","Evandro Zanatta <ezanatta@tray.net.br>","Gardner Bickford <gardner@users.noreply.github.com>","Gian Luca <gianluca.cecchi@cynny.com>","PatrickJS <github@gdi2290.com>","jonnyf <github@jonathanfoss.co.uk>","Hizkia Felix <hizkifw@gmail.com>","Hristo Oskov <hristo.oskov@gmail.com>","Isaac Madwed <i.madwed@gmail.com>","Ilya Konanykhin <ilya.konanykhin@gmail.com>","jasonbarry <jasbarry@me.com>","Jonathan Burke <jonathan.burke.1311@googlemail.com>","Josh Hamit <josh.hamit@gmail.com>","Jordan Austin <jrax86@gmail.com>","Joel Wetzell <jwetzell@yahoo.com>","xizhao <kevin.wang@cloudera.com>","Alberto Torres <kungfoobar@gmail.com>","Jonathan Mayol <mayoljonathan@gmail.com>","Jefferson Felix <me@jsfelix.dev>","Rolf Erik Lekang <me@rolflekang.com>","Kevin Mai-Husan Chia <mhchia@users.noreply.github.com>","Pepijn de Vos <pepijndevos@gmail.com>","JooYoung <qkdlql@naver.com>","Tobias Speicher <rootcommander@gmail.com>","Steve Blaurock <sblaurock@gmail.com>","Kyrylo Shegeda <shegeda@ualberta.ca>","Diwank Singh Tomer <singh@diwank.name>","Sören Balko <Soeren.Balko@gmail.com>","Arpit Solanki <solankiarpit1997@gmail.com>","Yuki Ito <yuki@gnnk.net>","Artur Zayats <zag2art@gmail.com>"],"funding":{"type":"opencollective","url":"https://opencollective.com/peer"},"collective":{"type":"opencollective","url":"https://opencollective.com/peer"},"files":["dist/*"],"sideEffects":["lib/global.ts","lib/supports.ts"],"main":"dist/bundler.cjs","module":"dist/bundler.mjs","browser-minified":"dist/peerjs.min.js","browser-unminified":"dist/peerjs.js","browser-minified-msgpack":"dist/serializer.msgpack.mjs","types":"dist/types.d.ts","engines":{"node":">= 14"},"targets":{"types":{"source":"lib/exports.ts"},"main":{"source":"lib/exports.ts","sourceMap":{"inlineSources":true}},"module":{"source":"lib/exports.ts","includeNodeModules":["eventemitter3"],"sourceMap":{"inlineSources":true}},"browser-minified":{"context":"browser","outputFormat":"global","optimize":true,"engines":{"browsers":"chrome >= 83, edge >= 83, firefox >= 80, safari >= 15"},"source":"lib/global.ts"},"browser-unminified":{"context":"browser","outputFormat":"global","optimize":false,"engines":{"browsers":"chrome >= 83, edge >= 83, firefox >= 80, safari >= 15"},"source":"lib/global.ts"},"browser-minified-msgpack":{"context":"browser","outputFormat":"esmodule","isLibrary":true,"optimize":true,"engines":{"browsers":"chrome >= 83, edge >= 83, firefox >= 102, safari >= 15"},"source":"lib/dataconnection/StreamConnection/MsgPack.ts"}},"scripts":{"contributors":"git-authors-cli --print=false && prettier --write package.json && git add package.json package-lock.json && git commit -m \\"chore(contributors): update and sort contributors list\\"","check":"tsc --noEmit && tsc -p e2e/tsconfig.json --noEmit","watch":"parcel watch","build":"rm -rf dist && parcel build","prepublishOnly":"npm run build","test":"jest","test:watch":"jest --watch","coverage":"jest --coverage --collectCoverageFrom=\\"./lib/**\\"","format":"prettier --write .","format:check":"prettier --check .","semantic-release":"semantic-release","e2e":"wdio run e2e/wdio.local.conf.ts","e2e:bstack":"wdio run e2e/wdio.bstack.conf.ts"},"devDependencies":{"@parcel/config-default":"^2.9.3","@parcel/packager-ts":"^2.9.3","@parcel/transformer-typescript-tsc":"^2.9.3","@parcel/transformer-typescript-types":"^2.9.3","@semantic-release/changelog":"^6.0.1","@semantic-release/git":"^10.0.1","@swc/core":"^1.3.27","@swc/jest":"^0.2.24","@types/jasmine":"^4.3.4","@wdio/browserstack-service":"^8.11.2","@wdio/cli":"^8.11.2","@wdio/globals":"^8.11.2","@wdio/jasmine-framework":"^8.11.2","@wdio/local-runner":"^8.11.2","@wdio/spec-reporter":"^8.11.2","@wdio/types":"^8.10.4","http-server":"^14.1.1","jest":"^29.3.1","jest-environment-jsdom":"^29.3.1","mock-socket":"^9.0.0","parcel":"^2.9.3","prettier":"^3.0.0","semantic-release":"^21.0.0","ts-node":"^10.9.1","typescript":"^5.0.0","wdio-geckodriver-service":"^5.0.1"},"dependencies":{"@msgpack/msgpack":"^2.8.0","eventemitter3":"^4.0.7","peerjs-js-binarypack":"^2.1.0","webrtc-adapter":"^9.0.0"},"alias":{"process":false,"buffer":false}}');class eN extends eM.EventEmitter{start(e,t){this._id=e;let n=`${this._baseUrl}&id=${e}&token=${t}`;!this._socket&&this._disconnected&&(this._socket=new WebSocket(n+"&version="+ez.version),this._disconnected=!1,this._socket.onmessage=e=>{let t;try{t=JSON.parse(e.data),eI.log("Server message received:",t)}catch(t){eI.log("Invalid server message",e.data);return}this.emit(M.Message,t)},this._socket.onclose=e=>{this._disconnected||(eI.log("Socket closed.",e),this._cleanup(),this._disconnected=!0,this.emit(M.Disconnected))},this._socket.onopen=()=>{this._disconnected||(this._sendQueuedMessages(),eI.log("Socket open"),this._scheduleHeartbeat())})}_scheduleHeartbeat(){this._wsPingTimer=setTimeout(()=>{this._sendHeartbeat()},this.pingInterval)}_sendHeartbeat(){if(!this._wsOpen()){eI.log("Cannot send heartbeat, because socket closed");return}let e=JSON.stringify({type:O.Heartbeat});this._socket.send(e),this._scheduleHeartbeat()}_wsOpen(){return!!this._socket&&1===this._socket.readyState}_sendQueuedMessages(){let e=[...this._messagesQueue];for(let t of(this._messagesQueue=[],e))this.send(t)}send(e){if(this._disconnected)return;if(!this._id){this._messagesQueue.push(e);return}if(!e.type){this.emit(M.Error,"Invalid message");return}if(!this._wsOpen())return;let t=JSON.stringify(e);this._socket.send(t)}close(){this._disconnected||(this._cleanup(),this._disconnected=!0)}_cleanup(){this._socket&&(this._socket.onopen=this._socket.onmessage=this._socket.onclose=null,this._socket.close(),this._socket=void 0),clearTimeout(this._wsPingTimer)}constructor(e,t,n,r,i,o=5e3){super(),this.pingInterval=o,this._disconnected=!0,this._messagesQueue=[],this._baseUrl=(e?"wss://":"ws://")+t+":"+n+r+"peerjs?key="+i}}class e${startConnection(e){let t=this._startPeerConnection();if(this.connection.peerConnection=t,this.connection.type===w.Media&&e._stream&&this._addTracksToConnection(e._stream,t),e.originator){let n=this.connection,r={ordered:!!e.reliable},i=t.createDataChannel(n.label,r);n._initializeDataChannel(i),this._makeOffer()}else this.handleSDP("OFFER",e.sdp)}_startPeerConnection(){eI.log("Creating RTCPeerConnection.");let e=new RTCPeerConnection(this.connection.provider.options.config);return this._setupListeners(e),e}_setupListeners(e){let t=this.connection.peer,n=this.connection.connectionId,r=this.connection.type,i=this.connection.provider;eI.log("Listening for ICE candidates."),e.onicecandidate=e=>{e.candidate&&e.candidate.candidate&&(eI.log(`Received ICE candidates for ${t}:`,e.candidate),i.socket.send({type:O.Candidate,payload:{candidate:e.candidate,type:r,connectionId:n},dst:t}))},e.oniceconnectionstatechange=()=>{switch(e.iceConnectionState){case"failed":eI.log("iceConnectionState is failed, closing connections to "+t),this.connection.emitError(D.NegotiationFailed,"Negotiation of connection to "+t+" failed."),this.connection.close();break;case"closed":eI.log("iceConnectionState is closed, closing connections to "+t),this.connection.emitError(D.ConnectionClosed,"Connection to "+t+" closed."),this.connection.close();break;case"disconnected":eI.log("iceConnectionState changed to disconnected on the connection with "+t);break;case"completed":e.onicecandidate=()=>{}}this.connection.emit("iceStateChanged",e.iceConnectionState)},eI.log("Listening for data channel"),e.ondatachannel=e=>{eI.log("Received data channel");let r=e.channel;i.getConnection(t,n)._initializeDataChannel(r)},eI.log("Listening for remote stream"),e.ontrack=e=>{eI.log("Received remote stream");let r=e.streams[0],o=i.getConnection(t,n);o.type===w.Media&&this._addStreamToMediaConnection(r,o)}}cleanup(){eI.log("Cleaning up PeerConnection to "+this.connection.peer);let e=this.connection.peerConnection;if(!e)return;this.connection.peerConnection=null,e.onicecandidate=e.oniceconnectionstatechange=e.ondatachannel=e.ontrack=()=>{};let t="closed"!==e.signalingState,n=!1,r=this.connection.dataChannel;r&&(n=!!r.readyState&&"closed"!==r.readyState),(t||n)&&e.close()}async _makeOffer(){let e=this.connection.peerConnection,t=this.connection.provider;try{let n=await e.createOffer(this.connection.options.constraints);eI.log("Created offer."),this.connection.options.sdpTransform&&"function"==typeof this.connection.options.sdpTransform&&(n.sdp=this.connection.options.sdpTransform(n.sdp)||n.sdp);try{await e.setLocalDescription(n),eI.log("Set localDescription:",n,`for:${this.connection.peer}`);let r={sdp:n,type:this.connection.type,connectionId:this.connection.connectionId,metadata:this.connection.metadata};if(this.connection.type===w.Data){let e=this.connection;r={...r,label:e.label,reliable:e.reliable,serialization:e.serialization}}t.socket.send({type:O.Offer,payload:r,dst:this.connection.peer})}catch(e){"OperationError: Failed to set local offer sdp: Called in wrong state: kHaveRemoteOffer"!=e&&(t.emitError(E.WebRTC,e),eI.log("Failed to setLocalDescription, ",e))}}catch(e){t.emitError(E.WebRTC,e),eI.log("Failed to createOffer, ",e)}}async _makeAnswer(){let e=this.connection.peerConnection,t=this.connection.provider;try{let n=await e.createAnswer();eI.log("Created answer."),this.connection.options.sdpTransform&&"function"==typeof this.connection.options.sdpTransform&&(n.sdp=this.connection.options.sdpTransform(n.sdp)||n.sdp);try{await e.setLocalDescription(n),eI.log("Set localDescription:",n,`for:${this.connection.peer}`),t.socket.send({type:O.Answer,payload:{sdp:n,type:this.connection.type,connectionId:this.connection.connectionId},dst:this.connection.peer})}catch(e){t.emitError(E.WebRTC,e),eI.log("Failed to setLocalDescription, ",e)}}catch(e){t.emitError(E.WebRTC,e),eI.log("Failed to create answer, ",e)}}async handleSDP(e,t){t=new RTCSessionDescription(t);let n=this.connection.peerConnection,r=this.connection.provider;eI.log("Setting remote description",t);try{await n.setRemoteDescription(t),eI.log(`Set remoteDescription:${e} for:${this.connection.peer}`),"OFFER"===e&&await this._makeAnswer()}catch(e){r.emitError(E.WebRTC,e),eI.log("Failed to setRemoteDescription, ",e)}}async handleCandidate(e){eI.log("handleCandidate:",e);try{await this.connection.peerConnection.addIceCandidate(e),eI.log(`Added ICE candidate for:${this.connection.peer}`)}catch(e){this.connection.provider.emitError(E.WebRTC,e),eI.log("Failed to handleCandidate, ",e)}}_addTracksToConnection(e,t){if(eI.log(`add tracks from stream ${e.id} to peer connection`),!t.addTrack)return eI.error("Your browser does't support RTCPeerConnection#addTrack. Ignored.");e.getTracks().forEach(n=>{t.addTrack(n,e)})}_addStreamToMediaConnection(e,t){eI.log(`add stream ${e.id} to media connection ${t.connectionId}`),t.addStream(e)}constructor(e){this.connection=e}}class eJ extends eM.EventEmitter{emitError(e,t){eI.error("Error:",t),this.emit("error",new eV(`${e}`,t))}}class eV extends Error{constructor(e,t){"string"==typeof t?super(t):(super(),Object.assign(this,t)),this.type=e}}class eG extends eJ{get open(){return this._open}constructor(e,t,n){super(),this.peer=e,this.provider=t,this.options=n,this._open=!1,this.metadata=n.metadata}}class eW extends eG{get type(){return w.Media}get localStream(){return this._localStream}get remoteStream(){return this._remoteStream}_initializeDataChannel(e){this.dataChannel=e,this.dataChannel.onopen=()=>{eI.log(`DC#${this.connectionId} dc connection success`),this.emit("willCloseOnRemote")},this.dataChannel.onclose=()=>{eI.log(`DC#${this.connectionId} dc closed for:`,this.peer),this.close()}}addStream(e){eI.log("Receiving stream",e),this._remoteStream=e,super.emit("stream",e)}handleMessage(e){let t=e.type,n=e.payload;switch(e.type){case O.Answer:this._negotiator.handleSDP(t,n.sdp),this._open=!0;break;case O.Candidate:this._negotiator.handleCandidate(n.candidate);break;default:eI.warn(`Unrecognized message type:${t} from peer:${this.peer}`)}}answer(e,t={}){if(this._localStream){eI.warn("Local stream already exists on this MediaConnection. Are you answering a call twice?");return}for(let n of(this._localStream=e,t&&t.sdpTransform&&(this.options.sdpTransform=t.sdpTransform),this._negotiator.startConnection({...this.options._payload,_stream:e}),this.provider._getMessages(this.connectionId)))this.handleMessage(n);this._open=!0}close(){this._negotiator&&(this._negotiator.cleanup(),this._negotiator=null),this._localStream=null,this._remoteStream=null,this.provider&&(this.provider._removeConnection(this),this.provider=null),this.options&&this.options._stream&&(this.options._stream=null),this.open&&(this._open=!1,super.emit("close"))}constructor(e,t,n){super(e,t,n),this._localStream=this.options._stream,this.connectionId=this.options.connectionId||eW.ID_PREFIX+ex.randomToken(),this._negotiator=new e$(this),this._localStream&&this._negotiator.startConnection({_stream:this._localStream,originator:!0})}}eW.ID_PREFIX="mc_";class eH{_buildRequest(e){let t=this._options.secure?"https":"http",{host:n,port:r,path:i,key:o}=this._options,s=new URL(`${t}://${n}:${r}${i}${o}/${e}`);return s.searchParams.set("ts",`${Date.now()}${Math.random()}`),s.searchParams.set("version",ez.version),fetch(s.href,{referrerPolicy:this._options.referrerPolicy})}async retrieveId(){try{let e=await this._buildRequest("id");if(200!==e.status)throw Error(`Error. Status:${e.status}`);return e.text()}catch(t){eI.error("Error retrieving ID",t);let e="";throw"/"===this._options.path&&this._options.host!==ex.CLOUD_HOST&&(e=" If you passed in a `path` to your self-hosted PeerServer, you'll also need to pass in that same path when creating a new Peer."),Error("Could not get an ID from the server."+e)}}async listAllPeers(){try{let e=await this._buildRequest("peers");if(200!==e.status){if(401===e.status){let e="";throw e=this._options.host===ex.CLOUD_HOST?"It looks like you're using the cloud server. You can email team@peerjs.com to enable peer listing for your API key.":"You need to enable `allow_discovery` on your self-hosted PeerServer to use this feature.",Error("It doesn't look like you have permission to list peers IDs. "+e)}throw Error(`Error. Status:${e.status}`)}return e.json()}catch(e){throw eI.error("Error retrieving list peers",e),Error("Could not get list peers from the server."+e)}}constructor(e){this._options=e}}class eY extends eG{get type(){return w.Data}_initializeDataChannel(e){this.dataChannel=e,this.dataChannel.onopen=()=>{eI.log(`DC#${this.connectionId} dc connection success`),this._open=!0,this.emit("open")},this.dataChannel.onmessage=e=>{eI.log(`DC#${this.connectionId} dc onmessage:`,e.data)},this.dataChannel.onclose=()=>{eI.log(`DC#${this.connectionId} dc closed for:`,this.peer),this.close()}}close(e){if(e?.flush){this.send({__peerData:{type:"close"}});return}this._negotiator&&(this._negotiator.cleanup(),this._negotiator=null),this.provider&&(this.provider._removeConnection(this),this.provider=null),this.dataChannel&&(this.dataChannel.onopen=null,this.dataChannel.onmessage=null,this.dataChannel.onclose=null,this.dataChannel=null),this.open&&(this._open=!1,super.emit("close"))}send(e,t=!1){if(!this.open){this.emitError(x.NotOpenYet,"Connection is not open. You should listen for the `open` event before sending messages.");return}return this._send(e,t)}async handleMessage(e){let t=e.payload;switch(e.type){case O.Answer:await this._negotiator.handleSDP(e.type,t.sdp);break;case O.Candidate:await this._negotiator.handleCandidate(t.candidate);break;default:eI.warn("Unrecognized message type:",e.type,"from peer:",this.peer)}}constructor(e,t,n){super(e,t,n),this.connectionId=this.options.connectionId||eY.ID_PREFIX+eE(),this.label=this.options.label||this.connectionId,this.reliable=!!this.options.reliable,this._negotiator=new e$(this),this._negotiator.startConnection(this.options._payload||{originator:!0,reliable:this.reliable})}}eY.ID_PREFIX="dc_",eY.MAX_BUFFERED_AMOUNT=8388608;class eK extends eY{get bufferSize(){return this._bufferSize}_initializeDataChannel(e){super._initializeDataChannel(e),this.dataChannel.binaryType="arraybuffer",this.dataChannel.addEventListener("message",e=>this._handleDataMessage(e))}_bufferedSend(e){(this._buffering||!this._trySend(e))&&(this._buffer.push(e),this._bufferSize=this._buffer.length)}_trySend(e){if(!this.open)return!1;if(this.dataChannel.bufferedAmount>eY.MAX_BUFFERED_AMOUNT)return this._buffering=!0,setTimeout(()=>{this._buffering=!1,this._tryBuffer()},50),!1;try{this.dataChannel.send(e)}catch(e){return eI.error(`DC#:${this.connectionId} Error when sending:`,e),this._buffering=!0,this.close(),!1}return!0}_tryBuffer(){if(!this.open||0===this._buffer.length)return;let e=this._buffer[0];this._trySend(e)&&(this._buffer.shift(),this._bufferSize=this._buffer.length,this._tryBuffer())}close(e){if(e?.flush){this.send({__peerData:{type:"close"}});return}this._buffer=[],this._bufferSize=0,super.close()}constructor(...e){super(...e),this._buffer=[],this._bufferSize=0,this._buffering=!1}}class eX extends eK{close(e){super.close(e),this._chunkedData={}}_handleDataMessage({data:e}){let t=i(e),n=t.__peerData;if(n){if("close"===n.type){this.close();return}this._handleChunk(t);return}this.emit("data",t)}_handleChunk(e){let t=e.__peerData,n=this._chunkedData[t]||{data:[],count:0,total:e.total};if(n.data[e.n]=new Uint8Array(e.data),n.count++,this._chunkedData[t]=n,n.total===n.count){delete this._chunkedData[t];let e=function(e){let t=0;for(let n of e)t+=n.byteLength;let n=new Uint8Array(t),r=0;for(let t of e)n.set(t,r),r+=t.byteLength;return n}(n.data);this._handleDataMessage({data:e})}}_send(e,t){let n=o(e);if(n instanceof Promise)return this._send_blob(n);if(!t&&n.byteLength>this.chunker.chunkedMTU){this._sendChunks(n);return}this._bufferedSend(n)}async _send_blob(e){let t=await e;if(t.byteLength>this.chunker.chunkedMTU){this._sendChunks(t);return}this._bufferedSend(t)}_sendChunks(e){let t=this.chunker.chunk(e);for(let e of(eI.log(`DC#${this.connectionId} Try to send ${t.length} chunks...`),t))this.send(e,!0)}constructor(e,t,r){super(e,t,r),this.chunker=new n,this.serialization=I.Binary,this._chunkedData={}}}class eq extends eK{_handleDataMessage({data:e}){super.emit("data",e)}_send(e,t){this._bufferedSend(e)}constructor(...e){super(...e),this.serialization=I.None}}class eQ extends eK{_handleDataMessage({data:e}){let t=this.parse(this.decoder.decode(e)),n=t.__peerData;if(n&&"close"===n.type){this.close();return}this.emit("data",t)}_send(e,t){let n=this.encoder.encode(this.stringify(e));if(n.byteLength>=ex.chunkedMTU){this.emitError(x.MessageToBig,"Message too big for JSON channel");return}this._bufferedSend(n)}constructor(...e){super(...e),this.serialization=I.JSON,this.encoder=new TextEncoder,this.decoder=new TextDecoder,this.stringify=JSON.stringify,this.parse=JSON.parse}}class eZ extends eJ{get id(){return this._id}get options(){return this._options}get open(){return this._open}get socket(){return this._socket}get connections(){let e=Object.create(null);for(let[t,n]of this._connections)e[t]=n;return e}get destroyed(){return this._destroyed}get disconnected(){return this._disconnected}_createServerConnection(){let e=new eN(this._options.secure,this._options.host,this._options.port,this._options.path,this._options.key,this._options.pingInterval);return e.on(M.Message,e=>{this._handleMessage(e)}),e.on(M.Error,e=>{this._abort(E.SocketError,e)}),e.on(M.Disconnected,()=>{this.disconnected||(this.emitError(E.Network,"Lost connection to server."),this.disconnect())}),e.on(M.Close,()=>{this.disconnected||this._abort(E.SocketClosed,"Underlying socket is already closed.")}),e}_initialize(e){this._id=e,this.socket.start(e,this._options.token)}_handleMessage(e){let t=e.type,n=e.payload,r=e.src;switch(t){case O.Open:this._lastServerId=this.id,this._open=!0,this.emit("open",this.id);break;case O.Error:this._abort(E.ServerError,n.msg);break;case O.IdTaken:this._abort(E.UnavailableID,`ID "${this.id}" is taken`);break;case O.InvalidKey:this._abort(E.InvalidKey,`API KEY "${this._options.key}" is invalid`);break;case O.Leave:eI.log(`Received leave message from ${r}`),this._cleanupPeer(r),this._connections.delete(r);break;case O.Expire:this.emitError(E.PeerUnavailable,`Could not connect to peer ${r}`);break;case O.Offer:{let e=n.connectionId,t=this.getConnection(r,e);if(t&&(t.close(),eI.warn(`Offer received for existing Connection ID:${e}`)),n.type===w.Media){let i=new eW(r,this,{connectionId:e,_payload:n,metadata:n.metadata});t=i,this._addConnection(r,t),this.emit("call",i)}else if(n.type===w.Data){let i=new this._serializers[n.serialization](r,this,{connectionId:e,_payload:n,metadata:n.metadata,label:n.label,serialization:n.serialization,reliable:n.reliable});t=i,this._addConnection(r,t),this.emit("connection",i)}else{eI.warn(`Received malformed connection type:${n.type}`);return}for(let n of this._getMessages(e))t.handleMessage(n);break}default:{if(!n){eI.warn(`You received a malformed message from ${r} of type ${t}`);return}let i=n.connectionId,o=this.getConnection(r,i);o&&o.peerConnection?o.handleMessage(e):i?this._storeMessage(i,e):eI.warn("You received an unrecognized message:",e)}}}_storeMessage(e,t){this._lostMessages.has(e)||this._lostMessages.set(e,[]),this._lostMessages.get(e).push(t)}_getMessages(e){let t=this._lostMessages.get(e);return t?(this._lostMessages.delete(e),t):[]}connect(e,t={}){if(t={serialization:"default",...t},this.disconnected){eI.warn("You cannot connect to a new Peer because you called .disconnect() on this Peer and ended your connection with the server. You can create a new Peer to reconnect, or call reconnect on this peer if you believe its ID to still be available."),this.emitError(E.Disconnected,"Cannot connect to new Peer after disconnecting from server.");return}let n=new this._serializers[t.serialization](e,this,t);return this._addConnection(e,n),n}call(e,t,n={}){if(this.disconnected){eI.warn("You cannot connect to a new Peer because you called .disconnect() on this Peer and ended your connection with the server. You can create a new Peer to reconnect."),this.emitError(E.Disconnected,"Cannot connect to new Peer after disconnecting from server.");return}if(!t){eI.error("To call a peer, you must provide a stream from your browser's `getUserMedia`.");return}let r=new eW(e,this,{...n,_stream:t});return this._addConnection(e,r),r}_addConnection(e,t){eI.log(`add connection ${t.type}:${t.connectionId} to peerId:${e}`),this._connections.has(e)||this._connections.set(e,[]),this._connections.get(e).push(t)}_removeConnection(e){let t=this._connections.get(e.peer);if(t){let n=t.indexOf(e);-1!==n&&t.splice(n,1)}this._lostMessages.delete(e.connectionId)}getConnection(e,t){let n=this._connections.get(e);if(!n)return null;for(let e of n)if(e.connectionId===t)return e;return null}_delayedAbort(e,t){setTimeout(()=>{this._abort(e,t)},0)}_abort(e,t){eI.error("Aborting!"),this.emitError(e,t),this._lastServerId?this.disconnect():this.destroy()}destroy(){this.destroyed||(eI.log(`Destroy peer with ID:${this.id}`),this.disconnect(),this._cleanup(),this._destroyed=!0,this.emit("close"))}_cleanup(){for(let e of this._connections.keys())this._cleanupPeer(e),this._connections.delete(e);this.socket.removeAllListeners()}_cleanupPeer(e){let t=this._connections.get(e);if(t)for(let e of t)e.close()}disconnect(){if(this.disconnected)return;let e=this.id;eI.log(`Disconnect peer with ID:${e}`),this._disconnected=!0,this._open=!1,this.socket.close(),this._lastServerId=e,this._id=null,this.emit("disconnected",e)}reconnect(){if(this.disconnected&&!this.destroyed)eI.log(`Attempting reconnection to server with ID ${this._lastServerId}`),this._disconnected=!1,this._initialize(this._lastServerId);else if(this.destroyed)throw Error("This peer cannot reconnect to the server. It has already been destroyed.");else if(this.disconnected||this.open)throw Error(`Peer ${this.id} cannot reconnect because it is not disconnected from the server!`);else eI.error("In a hurry? We're still trying to make the initial connection!")}listAllPeers(e=e=>{}){this._api.listAllPeers().then(t=>e(t)).catch(e=>this._abort(E.ServerError,e))}constructor(e,t){let n;if(super(),this._serializers={raw:eq,json:eQ,binary:eX,"binary-utf8":eX,default:eX},this._id=null,this._lastServerId=null,this._destroyed=!1,this._disconnected=!1,this._open=!1,this._connections=new Map,this._lostMessages=new Map,e&&e.constructor==Object?t=e:e&&(n=e.toString()),t={debug:0,host:ex.CLOUD_HOST,port:ex.CLOUD_PORT,path:"/",key:eZ.DEFAULT_KEY,token:ex.randomToken(),config:ex.defaultConfig,referrerPolicy:"strict-origin-when-cross-origin",serializers:{},...t},this._options=t,this._serializers={...this._serializers,...this.options.serializers},"/"===this._options.host&&(this._options.host=window.location.hostname),this._options.path&&("/"!==this._options.path[0]&&(this._options.path="/"+this._options.path),"/"!==this._options.path[this._options.path.length-1]&&(this._options.path+="/")),void 0===this._options.secure&&this._options.host!==ex.CLOUD_HOST?this._options.secure=ex.isSecure():this._options.host==ex.CLOUD_HOST&&(this._options.secure=!0),this._options.logFunction&&eI.setLogFunction(this._options.logFunction),eI.logLevel=this._options.debug||0,this._api=new eH(t),this._socket=this._createServerConnection(),!ex.supports.audioVideo&&!ex.supports.data){this._delayedAbort(E.BrowserIncompatible,"The current browser does not support WebRTC");return}if(n&&!ex.validateId(n)){this._delayedAbort(E.InvalidID,`ID "${n}" is invalid`);return}n?this._initialize(n):this._api.retrieveId().then(e=>this._initialize(e)).catch(e=>this._abort(E.ServerError,e))}}eZ.DEFAULT_KEY="peerjs",window.peerjs={Peer:eZ,util:ex},window.Peer=eZ})();
+//# sourceMappingURL=peerjs.min.js.map
+</script>
+
+<script>
+'use strict';
+// ================= utilities =================
+const $=s=>document.querySelector(s);
+const rand=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const hyp=Math.hypot;
+const TAU=Math.PI*2;
+function angLerp(a,b,t){let d=b-a;while(d>Math.PI)d-=TAU;while(d<-Math.PI)d+=TAU;return a+d*t}
+const STORE={get(k,d){try{const v=localStorage.getItem('ssq_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('ssq_'+k,JSON.stringify(v))}catch(e){}}};
+function cleanName(s){s=String(s||'').replace(/[\u0000-\u001f<>]/g,'').trim().slice(0,12);return s||'Pilot'}
+let toastT=0;
+function toast(msg,ms){const t=$('#toast');t.textContent=msg;t.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>t.style.display='none',ms||3000)}
+
+// ================= constants =================
+const AW=1800,AH=1200,PR=18,STEP=1/60;
+const COLORS=['#38e8ff','#ff5fa8','#8dff4a','#ffcc33','#b48cff','#ff8a3d'];
+const ET=[
+ {n:'chaser',r:16,hp:22,spd:125,dmg:12,col:'#ff4d6d',score:10,sides:4,spin:2},
+ {n:'zippy',r:11,hp:12,spd:215,dmg:8,col:'#ffd23f',score:12,sides:3,spin:5},
+ {n:'shooter',r:17,hp:30,spd:95,dmg:10,col:'#4dd2ff',score:20,sides:4,spin:0.6},
+ {n:'tank',r:30,hp:115,spd:62,dmg:22,col:'#c77dff',score:35,sides:6,spin:0.5},
+ {n:'splitter',r:22,hp:45,spd:100,dmg:14,col:'#7cff6b',score:25,sides:5,spin:1.2},
+ {n:'dasher',r:17,hp:35,spd:105,dmg:18,col:'#ff9f1c',score:25,sides:3,spin:0},
+ {n:'mini',r:10,hp:10,spd:175,dmg:7,col:'#a8ff9a',score:5,sides:5,spin:4},
+ {n:'boss',r:66,hp:950,spd:55,dmg:28,col:'#ff3cac',score:500,sides:8,spin:0.4},
+];
+const UPG={
+ dmg:{name:'Power Core',desc:'+25% damage',ic:'\u{1F4A5}',max:99,ap:s=>s.dmg*=1.25},
+ rate:{name:'Rapid Fire',desc:'+20% fire rate',ic:'\u26A1',max:99,ap:s=>s.rate*=1.2},
+ multi:{name:'Split Shot',desc:'+1 projectile per shot',ic:'\u{1F531}',max:5,ap:s=>s.multi++},
+ speed:{name:'Thrusters',desc:'+12% move speed',ic:'\u{1F680}',max:5,ap:s=>s.spd*=1.12},
+ hp:{name:'Hull Plating',desc:'+30 max HP and full heal',ic:'\u{1F6E1}\uFE0F',max:99,ap:(s,p)=>{s.maxhp+=30;p.hp=s.maxhp}},
+ pierce:{name:'Piercing Rounds',desc:'Shots pass through +1 enemy',ic:'\u{1F3AF}',max:4,ap:s=>s.pierce++},
+ bounce:{name:'Ricochet',desc:'Shots bounce off walls',ic:'\u{1F501}',max:3,ap:s=>s.bounce++},
+ crit:{name:'Lucky Star',desc:'+10% chance for double damage',ic:'\u2B50',max:6,ap:s=>s.crit+=0.1},
+ regen:{name:'Nanobots',desc:'Regenerate 2 HP per second',ic:'\u{1F49A}',max:5,ap:s=>s.regen+=2},
+ dash:{name:'Blink Drive',desc:'Dash recharges 30% faster',ic:'\u{1F4A8}',max:4,ap:s=>s.dashcd*=0.7},
+ orbit:{name:'Orbit Drone',desc:'A drone circles you and zaps foes',ic:'\u{1F6F0}\uFE0F',max:4,ap:s=>s.orbit++},
+ magnet:{name:'Tractor Beam',desc:'Grab pickups from much farther',ic:'\u{1F9F2}',max:3,ap:s=>s.magnet+=110},
+ vamp:{name:'Star Siphon',desc:'Heal 3 HP for every takedown',ic:'\u2728',max:4,ap:s=>s.vamp+=3},
+ medic:{name:'Medic Kit',desc:'Revive teammates 2x faster',ic:'\u2795',max:2,ap:s=>s.revive*=2},
+ big:{name:'Mega Bullets',desc:'Bigger, faster shots',ic:'\u{1F535}',max:3,ap:s=>{s.bsize*=1.35;s.bspd*=1.15}},
+};
+const PREFIX='starlightsquad-v1-';
+const CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ';
+
+// ================= audio =================
+const Snd={ctx:null,out:null,mus:null,muted:STORE.get('muted',false),last:{},nb:null,
+ init(){
+  if(this.ctx){if(this.ctx.state==='suspended')this.ctx.resume();return}
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return;
+  try{this.ctx=new AC()}catch(e){return}
+  const c=this.ctx;this.out=c.createGain();this.out.gain.value=this.muted?0:0.5;
+  const comp=c.createDynamicsCompressor();this.out.connect(comp);comp.connect(c.destination);
+  this.mus=c.createGain();this.mus.gain.value=0.16;this.mus.connect(this.out);
+  const len=c.sampleRate;const b=c.createBuffer(1,len,c.sampleRate);const d=b.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;this.nb=b;
+  Music.start();
+ },
+ setMuted(m){this.muted=m;STORE.set('muted',m);if(this.out)this.out.gain.value=m?0:0.5;updateMuteLabels()},
+ ok(n,gap){const t=performance.now();if(this.last[n]&&t-this.last[n]<gap)return false;this.last[n]=t;return true},
+ now(d){return this.ctx.currentTime+(d||0)},
+ tone(f,dur,type,vol,f2,when,dest){const c=this.ctx;const t=when||c.currentTime;const o=c.createOscillator(),g=c.createGain();o.type=type||'square';o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(Math.max(20,f2),t+dur);g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.006);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.connect(g);g.connect(dest||this.out);o.start(t);o.stop(t+dur+0.03)},
+ noise(dur,vol,ff,when,type,dest){const c=this.ctx;const t=when||c.currentTime;const s=c.createBufferSource();s.buffer=this.nb;const f=c.createBiquadFilter();f.type=type||'lowpass';f.frequency.setValueAtTime(ff,t);f.frequency.exponentialRampToValueAtTime(Math.max(60,ff*0.25),t+dur);const g=c.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);s.connect(f);f.connect(g);g.connect(dest||this.out);s.start(t,Math.random()*0.4);s.stop(t+dur+0.03)},
+ arp(notes,gap,type,vol,dur){notes.forEach((f,i)=>this.tone(f,dur||0.14,type||'triangle',vol||0.12,null,this.now(i*gap)))},
+ play(n,a){
+  if(!this.ctx||this.muted)return;
+  try{switch(n){
+   case 'shoot':if(!this.ok(a?'shm':'sho',a?55:110))return;this.tone(a?880+Math.random()*80:640,0.07,'square',a?0.035:0.015,a?320:260);break;
+   case 'hit':if(!this.ok('hit',35))return;this.noise(0.05,0.12,3500,0,'bandpass');break;
+   case 'boom':if(!this.ok('boom'+(a>1?'b':''),45))return;this.noise(0.18+a*0.35,0.22+a*0.2,a>1?900:2000);this.tone(150,0.2+a*0.2,'sine',0.2+a*0.05,35);break;
+   case 'star':if(!this.ok('star',45))return;this.tone(1100+Math.random()*300,0.07,'triangle',0.06,1800);break;
+   case 'heart':this.arp([523,784],0.07,'triangle',0.14);break;
+   case 'hurt':if(!this.ok('hurt',80))return;this.noise(0.16,a?0.32:0.12,900);this.tone(220,0.16,'sawtooth',a?0.12:0.05,80);break;
+   case 'down':this.tone(440,0.6,'sawtooth',0.12,90);break;
+   case 'revive':this.arp([523,659,784,1047],0.07,'triangle',0.14);break;
+   case 'wave':this.arp([392,523,659,784],0.09,'square',0.06,0.18);break;
+   case 'clear':this.arp([523,659,784,1047,1319],0.07,'triangle',0.12,0.2);break;
+   case 'boss':this.tone(55,1.4,'sawtooth',0.22,38);this.noise(1.2,0.18,500);this.tone(110,1.2,'square',0.06,55);break;
+   case 'bossdead':this.noise(1.4,0.5,1200);this.tone(90,1.2,'sine',0.35,25);this.arp([523,659,784,1047,1319,1568],0.09,'square',0.07,0.25);break;
+   case 'click':this.tone(660,0.06,'triangle',0.1,990);break;
+   case 'pick':this.arp([660,990,1320],0.05,'triangle',0.12);break;
+   case 'dash':if(!this.ok('dash',60))return;this.noise(0.16,a?0.14:0.05,2600,0,'bandpass');this.tone(300,0.13,'sine',a?0.08:0.03,900);break;
+   case 'eshoot':if(!this.ok('es',90))return;this.tone(300,0.09,'triangle',0.04,170);break;
+   case 'over':this.arp([392,330,262,196],0.18,'triangle',0.15,0.3);break;
+   case 'beep':this.tone(a?1046:523,a?0.3:0.12,'square',0.07);break;
+   case 'join':this.arp([784,1047],0.08,'triangle',0.12);break;
+  }}catch(e){}
+ }
+};
+const Music={timer:null,step:0,next:0,intensity:0,
+ start(){if(this.timer||!Snd.ctx)return;this.next=Snd.ctx.currentTime+0.15;this.timer=setInterval(()=>this.tick(),40)},
+ tick(){const c=Snd.ctx;if(!c||c.state!=='running'||Snd.muted)return;if(this.next<c.currentTime-0.5)this.next=c.currentTime+0.05;const sp=60/(this.intensity>1?128:112)/4;
+  while(this.next<c.currentTime+0.2){this.note(this.step,this.next);this.step=(this.step+1)%64;this.next+=sp}},
+ note(s,t){const m=x=>440*Math.pow(2,(x-69)/12);const roots=[45,41,43,40];const r=roots[(s>>4)&3];const I=this.intensity;const out=Snd.mus;
+  if(s%2===0)Snd.tone(m(r+((s%8===6)?12:0)),0.16,'triangle',0.5,null,t,out);
+  const ch=[0,3,7,10,12,10,7,3];
+  if(I>0&&s%2===1)Snd.tone(m(r+24+ch[(s>>1)%8]),0.09,'square',0.1,null,t,out);
+  if(I===0&&s%4===1)Snd.tone(m(r+24+ch[(s>>2)%8]),0.25,'sine',0.14,null,t,out);
+  if(I>0&&s%4===0)Snd.tone(140,0.12,'sine',0.7,40,t,out);
+  if(I>0&&s%4===2)Snd.noise(0.04,0.18,7000,t,'highpass',out);
+  if(I>1&&s%8===4)Snd.noise(0.12,0.35,1800,t,'bandpass',out);
+ }
+};
+
+// ================= state =================
+const NET={mode:null,peer:null,conns:new Map(),conn:null,myId:'h',code:'',nextPid:1,joinTimer:0,myIdSet:false};
+let G=null;          // host / solo authoritative sim
+let CV=null;         // client view (latest snapshot)
+let paused=false;
+const me={name:STORE.get('name','')?cleanName(STORE.get('name','')):'',ci:STORE.get('color',0)%6};
+
+function newGame(){return {phase:'lobby',wave:0,score:0,t:0,pt:0,players:new Map(),enemies:[],bullets:[],ebullets:[],pickups:[],queue:[],spawnT:0,spawnRate:1,nid:1,events:[],netEv:[],boss:null}}
+function baseStats(){return {maxhp:100,spd:250,dmg:10,rate:5,multi:1,pierce:0,bounce:0,crit:0.05,regen:0,dashcd:2.2,orbit:0,magnet:90,vamp:0,revive:1,bsize:5,bspd:720}}
+function newPlayer(id,name,ci){const p={id,name:cleanName(name),ci,x:AW/2,y:AH/2,ang:0,hp:100,down:false,rev:0,inv:1.5,fireCd:0,dashCd:0,dashT:0,ddx:0,ddy:0,kx:0,ky:0,s:baseStats(),inp:{mx:0,my:0,a:0,f:0,d:0},lastD:0,choices:null,picked:true,ups:{},orbA:0,orbCd:0,kills:0};placePlayer(p,G?G.players.size:0,4);return p}
+function placePlayer(p,i,n){const a=i/Math.max(1,n)*TAU+0.6;p.x=AW/2+Math.cos(a)*(n>1?70:0);p.y=AH/2+Math.sin(a)*(n>1?70:0)}
+function resetPlayer(p,i,n){p.s=baseStats();p.hp=p.s.maxhp;p.down=false;p.rev=0;p.inv=2;p.fireCd=0;p.dashCd=0;p.dashT=0;p.kx=p.ky=0;p.ups={};p.choices=null;p.picked=true;p.kills=0;p.orbA=0;placePlayer(p,i,n)}
+function ev(...a){G.events.push(a)}
+function freeColor(want){const used=new Set([...G.players.values()].map(p=>p.ci));if(!used.has(want))return want;for(let i=0;i<COLORS.length;i++)if(!used.has(i))return i;return want}
+
+// ================= simulation (host / solo) =================
+function startGame(){
+ Object.assign(G,{wave:0,score:0,enemies:[],bullets:[],ebullets:[],pickups:[],queue:[],boss:null,phase:'countdown',pt:3.2,t:0});
+ let i=0;const n=G.players.size;for(const p of G.players.values())resetPlayer(p,i++,n);
+}
+function weighted(pool){let tot=0;for(const q of pool)tot+=q[1];let r=Math.random()*tot;for(const q of pool){r-=q[1];if(r<=0)return q[0]}return pool[0][0]}
+function startWave(n){
+ G.wave=n;G.phase='play';const np=G.players.size;const mult=1+0.6*(np-1);
+ const pool=[[0,10]];if(n>=2)pool.push([1,6]);if(n>=3)pool.push([2,4]);if(n>=4)pool.push([3,3]);if(n>=6)pool.push([4,4]);if(n>=7)pool.push([5,4]);
+ if(n>=9)pool[0][1]=6;
+ let budget=Math.round((6+n*3)*mult);G.queue=[];
+ const boss=n%5===0;
+ if(boss){G.queue.push(7);budget=Math.round(budget*0.3)}
+ for(let i=0;i<budget;i++)G.queue.push(weighted(pool));
+ G.spawnT=boss?0.5:1.2;G.spawnRate=Math.max(0.3,1.25-n*0.06)/Math.sqrt(mult);
+ G.ebullets=[];
+ ev(7,n,boss?1:0);
+}
+function alivePlayers(){const a=[];for(const p of G.players.values())if(!p.down)a.push(p);return a}
+function nearestAlive(x,y){let best=null,bd=1e18;for(const p of G.players.values()){if(p.down)continue;const d=(p.x-x)**2+(p.y-y)**2;if(d<bd){bd=d;best=p}}return best}
+function spawnEnemy(ty,x,y,now){
+ const d=ET[ty];const np=G.players.size;
+ let hp=d.hp*(1+0.12*(G.wave-1))*(1+0.25*(np-1));
+ if(ty===7)hp=d.hp*(1+0.8*(np-1))*(1+0.65*(Math.max(1,G.wave/5)-1));
+ if(x===undefined){
+  const al=alivePlayers();
+  for(let tries=0;tries<30;tries++){
+   if(ty===7){x=AW/2+rand(-300,300);y=Math.random()<0.5?200:AH-200}
+   else if(Math.random()<0.7){const side=Math.random()*4|0;x=side<2?rand(60,AW-60):(side===2?rand(40,120):rand(AW-120,AW-40));y=side>=2?rand(60,AH-60):(side===0?rand(40,120):rand(AH-120,AH-40))}
+   else{x=rand(80,AW-80);y=rand(80,AH-80)}
+   let ok=true;for(const p of al)if(hyp(p.x-x,p.y-y)<(ty===7?420:360)){ok=false;break}
+   if(ok)break;
+  }
+ }
+ const e={id:G.nid++,ty,x,y,vx:0,vy:0,kx:0,ky:0,hp,mhp:hp,r:d.r,spd:d.spd*(1+Math.min(0.35,0.02*G.wave))*rand(0.9,1.1),sp:now?0:(ty===7?2.2:0.9),flash:0,cd:rand(1,2.5),st:0,stT:0,rot:Math.random()*TAU,ang:0,wob:Math.random()*TAU,pat:0,burst:0,burstT:0,spiral:0,spT:0,dx:0,dy:0};
+ G.enemies.push(e);
+ if(ty===7){G.boss=e;e.cd=3;ev(8)}
+ return e;
+}
+function eShoot(x,y,a,spd,dmg){G.ebullets.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,r:7,life:6,dmg})}
+function damagePlayer(p,d,fx,fy){
+ if(p.down||p.inv>0||p.dashT>0)return;
+ p.hp-=d;p.inv=0.75;
+ if(fx!==undefined){const dx=p.x-fx,dy=p.y-fy,l=hyp(dx,dy)||1;p.kx+=dx/l*320;p.ky+=dy/l*320}
+ ev(4,p.id,p.x|0,p.y|0);
+ if(p.hp<=0){p.hp=0;p.down=true;p.rev=0;p.dashT=0;ev(5,p.id,p.x|0,p.y|0)}
+}
+function firePlayer(p){
+ const s=p.s,n=s.multi;const spread=n>1?Math.min(0.16,0.5/n):0;
+ for(let i=0;i<n;i++){
+  const a=p.ang+(i-(n-1)/2)*spread+rand(-0.025,0.025);
+  G.bullets.push({x:p.x+Math.cos(a)*24,y:p.y+Math.sin(a)*24,vx:Math.cos(a)*s.bspd,vy:Math.sin(a)*s.bspd,r:s.bsize,dmg:s.dmg,pierce:s.pierce,bounce:s.bounce,owner:p.id,ci:p.ci,life:1.3,hits:[]});
+ }
+ ev(2,p.id);
+}
+function killEnemy(e,owner){
+ const d=ET[e.ty];e.dead=true;
+ G.score+=Math.round(d.score*(1+0.1*(G.wave-1)));
+ const op=owner&&G.players.get(owner);if(op){op.kills++;if(op.s.vamp&&!op.down)op.hp=Math.min(op.s.maxhp,op.hp+op.s.vamp)}
+ ev(0,e.x|0,e.y|0,d.col,e.ty===7?3:(e.ty===3?1:0.5));
+ if(e.ty===7){ev(9,e.x|0,e.y|0);G.boss=null;for(let i=0;i<24;i++)dropPickup(e.x+rand(-60,60),e.y+rand(-60,60),i<4?1:0)}
+ else{if(Math.random()<0.75)dropPickup(e.x,e.y,0);if(Math.random()<0.045)dropPickup(e.x,e.y,1)}
+ if(e.ty===4){for(let i=0;i<2;i++){const m=spawnEnemy(6,e.x+rand(-12,12),e.y+rand(-12,12),true);m.kx=rand(-200,200);m.ky=rand(-200,200)}}
+}
+function dropPickup(x,y,ty){if(G.pickups.length>160)return;G.pickups.push({id:G.nid++,ty,x,y,vx:rand(-90,90),vy:rand(-90,90),life:ty?16:13})}
+function rollChoices(p){
+ const keys=Object.keys(UPG).filter(k=>(p.ups[k]||0)<UPG[k].max&&!(k==='medic'&&G.players.size<2));
+ const out=[];while(out.length<3&&keys.length){out.push(keys.splice(Math.random()*keys.length|0,1)[0])}return out;
+}
+function applyPick(p,i){
+ if(!p||p.picked||!p.choices)return;const k=p.choices[i|0];if(!k||!UPG[k])return;
+ UPG[k].ap(p.s,p);p.ups[k]=(p.ups[k]||0)+1;p.picked=true;p.hp=Math.min(p.hp,p.s.maxhp);ev(13,p.id);
+}
+function waveCleared(){
+ G.score+=50*G.wave;ev(12,G.wave);
+ G.phase='upgrade';G.pt=NET.mode==='solo'?9999:30;G.ebullets=[];
+ for(const p of G.players.values()){
+  if(p.down){p.down=false;p.hp=Math.round(p.s.maxhp*0.4);p.inv=2;ev(6,p.id,p.x|0,p.y|0)}
+  else p.hp=Math.min(p.s.maxhp,p.hp+p.s.maxhp*0.2);
+  p.choices=rollChoices(p);p.picked=false;
+  sendChoices(p);
+ }
+}
+function simTick(dt){
+ G.t+=dt;
+ const ph=G.phase;
+ if(ph==='over')return;
+ if(ph==='countdown'){G.pt-=dt;if(G.pt<=0)startWave(G.wave+1)}
+ else if(ph==='upgrade'){
+  G.pt-=dt;let all=true;for(const p of G.players.values())if(!p.picked)all=false;
+  if(all||G.pt<=0){for(const p of G.players.values())if(!p.picked)applyPick(p,Math.random()*3|0);G.phase='countdown';G.pt=3.2}
+ }
+ updatePlayers(dt);
+ if(G.phase==='play'){
+  G.spawnT-=dt;
+  if(G.spawnT<=0&&G.queue.length){
+   if(G.enemies.length<70){const n=Math.min(G.queue.length,1+(Math.random()*Math.min(4,1+G.wave/3)|0));for(let i=0;i<n;i++)spawnEnemy(G.queue.shift())}
+   G.spawnT=G.spawnRate*rand(0.7,1.3);if(G.boss&&G.boss.sp<=0)G.spawnT*=1.6;
+  }
+  updateEnemies(dt);
+ }
+ updateBullets(dt);
+ updatePickups(dt);
+ if(G.phase==='play'){
+  if(!G.queue.length&&!G.enemies.length)waveCleared();
+  else if(G.players.size&&!alivePlayers().length){G.phase='over';G.pt=0;ev(14)}
+ }
+}
+function updatePlayers(dt){
+ for(const p of G.players.values()){
+  const s=p.s,I=p.inp;
+  p.inv=Math.max(0,p.inv-dt);p.dashCd=Math.max(0,p.dashCd-dt);p.fireCd-=dt;
+  const kd=Math.pow(0.0008,dt);p.kx*=kd;p.ky*=kd;
+  if(p.down){
+   p.dashT=0;
+   let rate=0;for(const q of G.players.values()){if(q===p||q.down)continue;if(hyp(q.x-p.x,q.y-p.y)<75)rate=Math.max(rate,0.4*q.s.revive)}
+   if(rate>0){p.rev+=dt*rate;if(p.rev>=1){p.down=false;p.rev=0;p.hp=Math.round(s.maxhp*0.5);p.inv=2;ev(6,p.id,p.x|0,p.y|0)}}
+   else p.rev=Math.max(0,p.rev-dt*0.15);
+   p.x=clamp(p.x+p.kx*dt,PR,AW-PR);p.y=clamp(p.y+p.ky*dt,PR,AH-PR);
+   continue;
+  }
+  if(s.regen&&G.phase==='play')p.hp=Math.min(s.maxhp,p.hp+s.regen*dt);
+  let mx=+I.mx||0,my=+I.my||0;const ml=hyp(mx,my);if(ml>1){mx/=ml;my/=ml}
+  p.ang=+I.a||0;
+  if(I.d!==p.lastD){p.lastD=I.d;if(p.dashCd<=0){p.dashT=0.17;p.dashCd=s.dashcd;if(ml>0.1){p.ddx=mx/ml;p.ddy=my/ml}else{p.ddx=Math.cos(p.ang);p.ddy=Math.sin(p.ang)}ev(11,p.id,p.x|0,p.y|0)}}
+  let vx,vy;
+  if(p.dashT>0){p.dashT-=dt;vx=p.ddx*s.spd*3.3;vy=p.ddy*s.spd*3.3}else{vx=mx*s.spd;vy=my*s.spd}
+  p.x=clamp(p.x+(vx+p.kx)*dt,PR,AW-PR);p.y=clamp(p.y+(vy+p.ky)*dt,PR,AH-PR);
+  if(I.f&&p.fireCd<=0&&G.phase==='play'){firePlayer(p);p.fireCd=Math.max(p.fireCd,-STEP)+1/s.rate}
+  if(p.fireCd<0&&!I.f)p.fireCd=0;
+  p.orbA+=dt*2.4;
+  if(s.orbit>0&&G.phase==='play'){p.orbCd-=dt;if(p.orbCd<=0){p.orbCd=0.7;
+   for(let i=0;i<s.orbit;i++){const a=p.orbA+i*TAU/s.orbit;const ox=p.x+Math.cos(a)*44,oy=p.y+Math.sin(a)*44;
+    let best=null,bd=380*380;for(const e of G.enemies){if(e.sp>0)continue;const d=(e.x-ox)**2+(e.y-oy)**2;if(d<bd){bd=d;best=e}}
+    if(best){const aa=Math.atan2(best.y-oy,best.x-ox);G.bullets.push({x:ox,y:oy,vx:Math.cos(aa)*650,vy:Math.sin(aa)*650,r:4,dmg:s.dmg*0.6,pierce:0,bounce:0,owner:p.id,ci:p.ci,life:0.9,hits:[]})}
+   }}}
+ }
+}
+function updateEnemies(dt){
+ const E=G.enemies;
+ for(const e of E){
+  const d=ET[e.ty];
+  if(e.sp>0){e.sp-=dt;continue}
+  e.flash=Math.max(0,e.flash-dt);e.rot+=d.spin*dt;
+  const t=nearestAlive(e.x,e.y);
+  let tx=AW/2,ty=AH/2;if(t){tx=t.x;ty=t.y}
+  const dx=tx-e.x,dy=ty-e.y,dist=hyp(dx,dy)||1,ux=dx/dist,uy=dy/dist;
+  e.ang=Math.atan2(dy,dx);
+  let dvx=ux*e.spd,dvy=uy*e.spd,steer=4;
+  switch(e.ty){
+   case 1:{e.wob+=dt*6;const w=Math.sin(e.wob)*0.8;dvx=(ux*Math.cos(w)-uy*Math.sin(w))*e.spd;dvy=(uy*Math.cos(w)+ux*Math.sin(w))*e.spd;break}
+   case 2:{
+    if(dist<230){dvx=-ux*e.spd;dvy=-uy*e.spd}else if(dist<340){dvx=-uy*e.spd*0.7;dvy=ux*e.spd*0.7}
+    e.cd-=dt;if(e.cd<=0&&dist<650&&t){e.cd=rand(2,2.8);eShoot(e.x+ux*20,e.y+uy*20,e.ang,270,10+G.wave*0.4);ev(10)}
+    break}
+   case 5:{
+    if(e.st===0){e.cd-=dt;if(e.cd<=0&&dist<460&&t){e.st=1;e.stT=0.6}}
+    else if(e.st===1){dvx=0;dvy=0;steer=10;e.stT-=dt;e.dx=ux;e.dy=uy;e.rot=Math.atan2(uy,ux);if(e.stT<=0){e.st=2;e.stT=0.45}}
+    else{dvx=e.dx*640;dvy=e.dy*640;steer=20;e.stT-=dt;if(e.stT<=0){e.st=0;e.cd=rand(2,3)}}
+    if(e.st!==1&&(e.vx||e.vy))e.rot=Math.atan2(e.vy,e.vx);
+    break}
+   case 7:{
+    const hpR=e.hp/e.mhp;
+    if(dist<180){dvx*=-0.5;dvy*=-0.5}
+    e.cd-=dt;
+    if(e.cd<=0){e.pat=(e.pat+1)%4;e.cd=hpR<0.5?2.3:3.1;
+     if(e.pat===0){const n=hpR<0.5?24:16;for(let i=0;i<n;i++)eShoot(e.x,e.y,i/n*TAU+e.rot,210,14)}
+     else if(e.pat===1){e.burst=hpR<0.5?5:3;e.burstT=0}
+     else if(e.pat===2){e.spiral=2.4;e.spT=0}
+     else{const n=2+G.players.size;for(let i=0;i<n;i++){const a=i/n*TAU;const m=spawnEnemy(i%2?6:0,clamp(e.x+Math.cos(a)*100,30,AW-30),clamp(e.y+Math.sin(a)*100,30,AH-30));m.sp=0.6}}
+     ev(10);
+    }
+    if(e.burst>0){e.burstT-=dt;if(e.burstT<=0){e.burst--;e.burstT=0.28;for(let i=-2;i<=2;i++)eShoot(e.x,e.y,e.ang+i*0.13,330,13);ev(10)}}
+    if(e.spiral>0){e.spiral-=dt;e.spT-=dt;if(e.spT<=0){e.spT=0.09;const a=G.t*3.2;eShoot(e.x,e.y,a,230,12);eShoot(e.x,e.y,a+Math.PI,230,12);if(hpR<0.5){eShoot(e.x,e.y,a+Math.PI/2,230,12);eShoot(e.x,e.y,a-Math.PI/2,230,12)}ev(10)}}
+    break}
+  }
+  const k=Math.min(1,dt*steer);e.vx+=(dvx-e.vx)*k;e.vy+=(dvy-e.vy)*k;
+  const kd=Math.pow(0.001,dt);e.kx*=kd;e.ky*=kd;
+  e.x=clamp(e.x+(e.vx+e.kx)*dt,e.r,AW-e.r);e.y=clamp(e.y+(e.vy+e.ky)*dt,e.r,AH-e.r);
+ }
+ for(let i=0;i<E.length;i++){const a=E[i];if(a.sp>0)continue;for(let j=i+1;j<E.length;j++){const b=E[j];if(b.sp>0)continue;const dx=b.x-a.x,dy=b.y-a.y,rr=a.r+b.r;if(dx*dx+dy*dy<rr*rr){const d=hyp(dx,dy)||0.01,o=(rr-d)/2,ux=dx/d,uy=dy/d;const wa=a.ty===7?0.1:1,wb=b.ty===7?0.1:1;a.x-=ux*o*wa;a.y-=uy*o*wa;b.x+=ux*o*wb;b.y+=uy*o*wb}}}
+ for(const e of E){if(e.sp>0)continue;for(const p of G.players.values()){if(p.down)continue;const rr=e.r+PR-4;if((p.x-e.x)**2+(p.y-e.y)**2<rr*rr)damagePlayer(p,ET[e.ty].dmg*(1+0.03*G.wave),e.x,e.y)}}
+}
+function updateBullets(dt){
+ const B=G.bullets;
+ for(const b of B){
+  b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
+  if(b.x<0||b.x>AW){if(b.bounce>0){b.bounce--;b.vx*=-1;b.x=clamp(b.x,0,AW);b.hits.length=0;b.life=Math.max(b.life,0.6)}else b.life=0}
+  if(b.y<0||b.y>AH){if(b.bounce>0){b.bounce--;b.vy*=-1;b.y=clamp(b.y,0,AH);b.hits.length=0;b.life=Math.max(b.life,0.6)}else b.life=0}
+  if(b.life<=0)continue;
+  for(const e of G.enemies){
+   if(e.sp>0||e.dead)continue;const rr=e.r+b.r;
+   if((b.x-e.x)**2+(b.y-e.y)**2<rr*rr&&!b.hits.includes(e.id)){
+    const owner=G.players.get(b.owner);const crit=owner&&Math.random()<owner.s.crit;const dmg=b.dmg*(crit?2:1);
+    e.hp-=dmg;e.flash=0.07;const kb=e.ty===7?0.004:(0.05*16/e.r);e.kx+=b.vx*kb;e.ky+=b.vy*kb;
+    ev(1,b.x|0,b.y|0,Math.round(dmg),crit?1:0);
+    if(e.hp<=0)killEnemy(e,b.owner);
+    if(b.pierce>0){b.pierce--;b.hits.push(e.id)}else{b.life=0;break}
+   }
+  }
+ }
+ G.bullets=B.filter(b=>b.life>0);
+ G.enemies=G.enemies.filter(e=>!e.dead);
+ for(const b of G.ebullets){
+  b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
+  if(b.x<-20||b.x>AW+20||b.y<-20||b.y>AH+20)b.life=0;
+  if(b.life<=0)continue;
+  for(const p of G.players.values()){if(p.down)continue;const rr=b.r+PR-3;if((p.x-b.x)**2+(p.y-b.y)**2<rr*rr&&p.inv<=0&&p.dashT<=0){damagePlayer(p,b.dmg,b.x-b.vx,b.y-b.vy);b.life=0;break}}
+ }
+ G.ebullets=G.ebullets.filter(b=>b.life>0);
+}
+function updatePickups(dt){
+ const vac=G.phase!=='play';
+ for(const k of G.pickups){
+  k.life-=dt;const f=Math.pow(0.05,dt);k.vx*=f;k.vy*=f;
+  let best=null,bd=1e18;for(const p of G.players.values()){if(p.down)continue;if(k.ty===1&&p.hp>=p.s.maxhp&&!vac)continue;const d=(p.x-k.x)**2+(p.y-k.y)**2;if(d<bd){bd=d;best=p}}
+  if(best){const d=Math.sqrt(bd)||1;const range=vac?99999:best.s.magnet;
+   if(d<range){const pull=vac?900:500;k.vx+=(best.x-k.x)/d*pull*dt*4;k.vy+=(best.y-k.y)/d*pull*dt*4}
+   if(d<PR+12){k.life=0;
+    if(k.ty===0)G.score+=5;else best.hp=Math.min(best.s.maxhp,best.hp+25);
+    ev(3,k.x|0,k.y|0,k.ty,best.id)}}
+  k.x=clamp(k.x+k.vx*dt,8,AW-8);k.y=clamp(k.y+k.vy*dt,8,AH-8);
+ }
+ G.pickups=G.pickups.filter(k=>k.life>0);
+}
+function makeSnap(){
+ const p=[];for(const q of G.players.values())p.push([q.id,q.x|0,q.y|0,+q.ang.toFixed(2),Math.ceil(q.hp),q.s.maxhp,q.down?1:0,(q.rev*100)|0,q.inv>0?1:0,q.dashT>0?1:0,q.picked?1:0,q.s.orbit,+(q.orbA%TAU).toFixed(2),Math.round(q.dashCd/q.s.dashcd*100),Math.round(q.s.spd),q.kills,q.ci,q.name,+q.s.dashcd.toFixed(2)]);
+ const e=G.enemies.map(e=>[e.id,e.ty,e.x|0,e.y|0,Math.max(0,Math.ceil(e.hp/e.mhp*100)),e.flash>0?1:0,e.sp>0?1:0,e.st===1?1:0,+(e.rot%TAU).toFixed(2),+e.ang.toFixed(2)]);
+ const b=[];for(const q of G.bullets)b.push(q.x|0,q.y|0,q.vx|0,q.vy|0,q.ci,Math.round(q.r));
+ const eb=[];for(const q of G.ebullets)eb.push(q.x|0,q.y|0,q.vx|0,q.vy|0);
+ const k=G.pickups.map(q=>[q.id,q.ty,q.x|0,q.y|0,q.life<3?1:0]);
+ return {t:'s',ph:G.phase,w:G.wave,sc:G.score,left:G.queue.length+G.enemies.length,pt:Math.ceil(G.pt),p,e,b,eb,k,bh:G.boss&&G.boss.sp<=0?+Math.max(0,G.boss.hp/G.boss.mhp).toFixed(3):-1};
+}
+
+// ================= networking =================
+function genCode(){let s='';for(let i=0;i<4;i++)s+=CODE_CHARS[Math.random()*CODE_CHARS.length|0];return s}
+function peerAvailable(){if(typeof Peer==='undefined'){toast('Online play unavailable (PeerJS failed to load). Try Solo.',5000);return false}return true}
+function hostGame(){
+ if(!peerAvailable())return;
+ NET.mode='host';NET.myId='h';NET.conns.clear();NET.nextPid=1;UI.lastPh=null;paused=false;
+ G=newGame();G.players.set('h',newPlayer('h',me.name||'Host',me.ci));
+ showScreen('lobby');setLobbyStatus('Creating room…');$('#roomCode').textContent='....';
+ openHostPeer(0);
+}
+function openHostPeer(attempt){
+ NET.code=genCode();
+ const peer=new Peer(PREFIX+NET.code,{debug:0});NET.peer=peer;
+ peer.on('open',()=>{if(NET.peer!==peer)return;$('#roomCode').textContent=NET.code;setLobbyStatus('Room ready! Waiting for friends…');
+  if(/^https?:/.test(location.protocol))$('#bCopy').style.display='inline-block'});
+ peer.on('connection',c=>{if(NET.peer===peer)setupHostConn(c)});
+ peer.on('disconnected',()=>{if(NET.peer===peer&&!peer.destroyed){setTimeout(()=>{try{if(NET.peer===peer&&!peer.destroyed)peer.reconnect()}catch(e){}},1000)}});
+ peer.on('error',err=>{
+  if(NET.peer!==peer)return;
+  if(err.type==='unavailable-id'&&attempt<6){NET.peer=null;peer.destroy();openHostPeer(attempt+1);return}
+  if(err.type==='peer-unavailable')return;
+  console.warn('peer error',err.type);
+  if(G&&G.phase==='lobby'&&NET.conns.size===0)setLobbyStatus('Could not reach the matchmaking server ('+err.type+'). Your network may block online play — Solo still works.');
+ });
+}
+function setupHostConn(c){
+ c.on('data',d=>{try{onHostData(c,d)}catch(e){console.warn(e)}});
+ c.on('close',()=>dropConn(c));
+ c.on('error',()=>dropConn(c));
+}
+function dropConn(c){
+ const info=NET.conns.get(c.peer);if(!info||info.conn!==c)return;NET.conns.delete(c.peer);
+ if(G&&G.players.has(info.pid)){const p=G.players.get(info.pid);G.players.delete(info.pid);toast(p.name+' left the squad');}
+}
+function onHostData(c,d){
+ if(!d||typeof d!=='object'||!G||NET.mode!=='host')return;
+ const info=NET.conns.get(c.peer);if(info)info.seen=performance.now();
+ if(d.t==='hello'){
+  if(info)return;
+  if(G.players.size>=4){c.send({t:'full'});setTimeout(()=>c.close(),400);return}
+  const pid='p'+(NET.nextPid++);const p=newPlayer(pid,d.name,freeColor((d.ci|0)%COLORS.length));
+  if(G.phase!=='lobby'){p.inv=2.5;const a=alivePlayers()[0];if(a){p.x=clamp(a.x+30,PR,AW-PR);p.y=clamp(a.y+30,PR,AH-PR)}}
+  G.players.set(pid,p);NET.conns.set(c.peer,{conn:c,pid,seen:performance.now()});
+  c.send({t:'wel',id:pid,code:NET.code});
+  toast(p.name+' joined the squad!');Snd.play('join');
+  return;
+ }
+ if(!info)return;const p=G.players.get(info.pid);if(!p)return;
+ if(d.t==='in'){p.inp={mx:clamp(+d.mx||0,-1,1),my:clamp(+d.my||0,-1,1),a:+d.a||0,f:d.f?1:0,d:d.d|0}}
+ else if(d.t==='pick'){applyPick(p,d.i)}
+}
+function sendChoices(p){if(NET.mode!=='host'||p.id==='h')return;for(const v of NET.conns.values())if(v.pid===p.id){try{v.conn.send({t:'ch',c:p.choices,ups:p.ups})}catch(e){}}}
+function broadcast(){
+ if(!NET.conns.size){G.netEv.length=0;return}
+ const s=makeSnap();let evs=G.netEv;if(evs.length>90)evs=evs.filter(e=>e[0]!==1&&e[0]!==2).slice(-90);s.ev=evs;G.netEv=[];
+ for(const v of NET.conns.values()){if(v.conn.open){try{v.conn.send(s)}catch(e){}}}
+}
+function joinGame(code){
+ code=String(code||'').toUpperCase().replace(/[^A-Z]/g,'');
+ if(code.length!==4){toast('Enter the 4-letter room code first');return}
+ if(!peerAvailable())return;
+ NET.mode='client';NET.code=code;NET.myIdSet=false;CV=null;CL.reset();UI.lastPh=null;
+ showScreen('connecting');$('#connTitle').textContent='Joining room '+code+'…';$('#connMsg').textContent='Connecting to the host…';
+ const peer=new Peer({debug:0});NET.peer=peer;
+ clearTimeout(NET.joinTimer);
+ NET.joinTimer=setTimeout(()=>{if(NET.peer===peer&&!NET.myIdSet)failJoin('Could not connect. Check the code and that the host is still online. (Some school networks block online play.)')},20000);
+ peer.on('open',()=>{
+  if(NET.peer!==peer)return;
+  $('#connMsg').textContent='Found the server, reaching the host…';
+  const c=peer.connect(PREFIX+code,{serialization:'json',reliable:true});NET.conn=c;
+  c.on('open',()=>{c.send({t:'hello',name:me.name||'Pilot',ci:me.ci})});
+  c.on('data',d=>{if(NET.conn!==c)return;try{onClientData(d)}catch(e){console.warn(e)}});
+  c.on('close',()=>{if(NET.conn===c&&NET.mode==='client'){backToTitle();toast('Disconnected from the host',4000)}});
+  c.on('error',()=>{});
+ });
+ peer.on('error',err=>{if(NET.peer!==peer)return;
+  if(err.type==='peer-unavailable')failJoin('No room with code '+code+'. Double-check it!');
+  else if(!NET.myIdSet)failJoin('Connection problem ('+err.type+'). Your network might block online play.');
+ });
+}
+function checkTimeouts(now){
+ if(NET.mode==='host'){for(const v of [...NET.conns.values()]){if(now-v.seen>10000){try{v.conn.close()}catch(e){}dropConn(v.conn)}}}
+ else if(NET.mode==='client'&&NET.myIdSet&&CL.snapT&&now-CL.snapT>10000){backToTitle();toast('Lost connection to the host',5000)}
+}
+function failJoin(msg){if(NET.mode!=='client')return;backToTitle();toast(msg,6000)}
+function onClientData(d){
+ if(!d||typeof d!=='object')return;
+ if(d.t==='wel'){NET.myId=d.id;NET.myIdSet=true;clearTimeout(NET.joinTimer);showScreen('game');Snd.play('join');toast('Joined room '+d.code+'!')}
+ else if(d.t==='full'){failJoin('That room is full (4 pilots max).')}
+ else if(d.t==='ch'){CL.choices=d.c;CL.ups=d.ups||{};CL.picked=false;if(CV&&CV.ph==='upgrade')renderCards()}
+ else if(d.t==='s'){CL.snap=d;CL.snapT=performance.now();CV=d;if(d.ev)handleEvents(d.ev)}
+}
+function backToTitle(){
+ const p=NET.peer;NET.peer=null;NET.conn=null;NET.myIdSet=false;clearTimeout(NET.joinTimer);
+ if(p){try{p.destroy()}catch(e){}}
+ NET.mode=null;NET.conns.clear();G=null;CV=null;paused=false;UI.lastPh=null;
+ showScreen('title');updateBest();Music.intensity=0;
+}
+
+// ================= client view & prediction =================
+const CL={snap:null,snapT:0,disp:new Map(),pred:{x:0,y:0,init:false,dashT:0,dashCd:0,ddx:0,ddy:0},choices:null,ups:{},picked:true,lastSend:0,lastIn:'',lastD:0,
+ reset(){this.snap=null;this.disp.clear();this.pred.init=false;this.choices=null;this.picked=true}};
+let FRAME=0;
+function dpos(key,x,y,a){
+ if(NET.mode!=='client')return {x,y,a};
+ let o=CL.disp.get(key);
+ if(!o){o={x,y,a:a||0,tx:x,ty:y,ta:a||0,seen:FRAME};CL.disp.set(key,o)}
+ o.tx=x;o.ty=y;o.ta=a||0;o.seen=FRAME;
+ return o;
+}
+function smoothDisp(dt){const k=Math.min(1,dt*14);for(const [key,o] of CL.disp){if(o.seen<FRAME-3){CL.disp.delete(key);continue}if(Math.abs(o.tx-o.x)>200||Math.abs(o.ty-o.y)>200){o.x=o.tx;o.y=o.ty}else{o.x+=(o.tx-o.x)*k;o.y+=(o.ty-o.y)*k}o.a=angLerp(o.a,o.ta,k)}}
+
+// ================= input =================
+const KEYS=new Set();
+const IN={mx:0,my:0,a:0,f:0,d:0,mouseX:0,mouseY:0,mouseDown:false,mouseUsed:false,auto:STORE.get('auto',false),touch:false};
+const TS={move:null,aim:null};
+function inGame(){return !!NET.mode&&!['title','connecting','how'].some(id=>$('#'+id).classList.contains('show'))}
+addEventListener('keydown',e=>{
+ if(e.target&&e.target.tagName==='INPUT'){if(e.key==='Enter'){if(e.target.id==='code')$('#bJoin').click();else e.target.blur()}return}
+ const k=e.key.toLowerCase();
+ if(!KEYS.has(k))onKeyPress(k);
+ KEYS.add(k);
+ if([' ','arrowup','arrowdown','arrowleft','arrowright'].includes(k))e.preventDefault();
+});
+addEventListener('keyup',e=>KEYS.delete(e.key.toLowerCase()));
+addEventListener('blur',()=>{KEYS.clear();IN.mouseDown=false});
+function onKeyPress(k){
+ Snd.init();
+ if(!inGame())return;
+ if(k===' '||k==='shift')doDash();
+ else if(k==='f')toggleAuto();
+ else if(k==='m')Snd.setMuted(!Snd.muted);
+ else if(k==='p'||k==='escape')togglePause();
+ else if(k==='1'||k==='2'||k==='3'){if($('#upgrade').classList.contains('show'))pickCard(+k-1)}
+}
+function doDash(){
+ IN.d=(IN.d+1)%1000;
+ if(NET.mode==='client'){const P=CL.pred;const mine=myView();if(mine&&!mine[6]&&P.dashCd<=0){P.dashT=0.17;P.dashCd=mine[18]||2.2;const l=hyp(IN.mx,IN.my);if(l>0.1){P.ddx=IN.mx/l;P.ddy=IN.my/l}else{P.ddx=Math.cos(IN.a);P.ddy=Math.sin(IN.a)}}}
+}
+function toggleAuto(){IN.auto=!IN.auto;STORE.set('auto',IN.auto);toast('Auto-aim '+(IN.auto?'ON — just move, you aim & fire automatically':'OFF — aim with the mouse or arrow keys'),2200);updateAutoLabel()}
+const cv=$('#c'),cx=cv.getContext('2d');
+let W=0,H=0,DPR=1,SC=1;const cam={x:AW/2,y:AH/2};
+(function(){
+ cv.addEventListener('mousemove',e=>{IN.mouseX=e.clientX;IN.mouseY=e.clientY;IN.mouseUsed=true});
+ cv.addEventListener('mousedown',e=>{Snd.init();if(e.button===0){IN.mouseDown=true;IN.mouseUsed=true;IN.mouseX=e.clientX;IN.mouseY=e.clientY}else if(e.button===2&&inGame())doDash()});
+ addEventListener('mouseup',e=>{if(e.button===0)IN.mouseDown=false});
+ cv.addEventListener('contextmenu',e=>e.preventDefault());
+ cv.addEventListener('touchstart',e=>{e.preventDefault();Snd.init();IN.touch=true;IN.mouseDown=false;
+  for(const t of e.changedTouches){const x=t.clientX,y=t.clientY;
+   if(hyp(x-(W-70),y-(H-80))<56){if(inGame())doDash();continue}
+   if(x<W/2){if(!TS.move)TS.move={id:t.identifier,ox:x,oy:y,x,y}}else if(!TS.aim)TS.aim={id:t.identifier,ox:x,oy:y,x,y}}
+ },{passive:false});
+ cv.addEventListener('touchmove',e=>{e.preventDefault();for(const t of e.changedTouches){for(const s of [TS.move,TS.aim])if(s&&s.id===t.identifier){s.x=t.clientX;s.y=t.clientY}}},{passive:false});
+ const end=e=>{for(const t of e.changedTouches){if(TS.move&&TS.move.id===t.identifier)TS.move=null;if(TS.aim&&TS.aim.id===t.identifier)TS.aim=null}};
+ cv.addEventListener('touchend',end);cv.addEventListener('touchcancel',end);
+})();
+function myView(){const v=view();if(!v)return null;for(const p of v.p)if(p[0]===NET.myId)return p;return null}
+function myPos(){if(NET.mode==='client'){if(CL.pred.init)return CL.pred;const m=myView();return m?{x:m[1],y:m[2]}:{x:AW/2,y:AH/2}}if(G){const p=G.players.get(NET.myId);if(p)return p}return {x:cam.x,y:cam.y}}
+function readInput(){
+ let mx=0,my=0;
+ if(KEYS.has('a'))mx-=1;if(KEYS.has('d'))mx+=1;if(KEYS.has('w'))my-=1;if(KEYS.has('s'))my+=1;
+ if(TS.move){const dx=TS.move.x-TS.move.ox,dy=TS.move.y-TS.move.oy,d=hyp(dx,dy);if(d>6){const m=Math.min(1,d/55);mx=dx/d*m;my=dy/d*m}}
+ const l=hyp(mx,my);if(l>1){mx/=l;my/=l}
+ IN.mx=mx;IN.my=my;
+ const p=myPos();let fire=0;
+ let ax=0,ay=0;if(KEYS.has('arrowleft'))ax-=1;if(KEYS.has('arrowright'))ax+=1;if(KEYS.has('arrowup'))ay-=1;if(KEYS.has('arrowdown'))ay+=1;
+ if(TS.aim){const dx=TS.aim.x-TS.aim.ox,dy=TS.aim.y-TS.aim.oy;if(hyp(dx,dy)>10)IN.a=Math.atan2(dy,dx);else{const t=nearestEnemyView(p);if(t)IN.a=Math.atan2(t.y-p.y,t.x-p.x)}fire=1}
+ else if(ax||ay){IN.a=Math.atan2(ay,ax);fire=1}
+ else if(IN.mouseDown||(!IN.auto&&!IN.touch&&IN.mouseUsed)){const w=screenToWorld(IN.mouseX,IN.mouseY);IN.a=Math.atan2(w.y-p.y,w.x-p.x);fire=IN.mouseDown?1:0}
+ if(!fire&&(IN.auto||IN.touch)){const t=nearestEnemyView(p);if(t){IN.a=Math.atan2(t.y-p.y,t.x-p.x);fire=1}}
+ IN.f=fire;
+}
+function nearestEnemyView(p){const v=view();if(!v)return null;let best=null,bd=650*650;for(const e of v.e){if(e[6])continue;const d=(e[2]-p.x)**2+(e[3]-p.y)**2;if(d<bd){bd=d;best={x:e[2],y:e[3]}}}return best}
+function sendInput(now){
+ const c=NET.conn;if(!c||!c.open||!NET.myIdSet)return;
+ const msg={t:'in',mx:+IN.mx.toFixed(2),my:+IN.my.toFixed(2),a:+IN.a.toFixed(2),f:IN.f,d:IN.d};
+ const key=msg.mx+','+msg.my+','+msg.a+','+msg.f+','+msg.d;
+ if((key!==CL.lastIn&&now-CL.lastSend>=33)||msg.d!==CL.lastD||now-CL.lastSend>250){try{c.send(msg)}catch(e){}CL.lastSend=now;CL.lastIn=key;CL.lastD=msg.d}
+}
+function predict(dt){
+ const m=myView();const P=CL.pred;if(!m)return;
+ const sx=m[1],sy=m[2];
+ P.dashCd=Math.max(0,P.dashCd-dt);
+ if(!P.init||m[6]){P.x=sx;P.y=sy;P.init=true;P.dashT=0;return}
+ const spd=m[14]||250;let vx,vy;
+ if(P.dashT>0){P.dashT-=dt;vx=P.ddx*spd*3.3;vy=P.ddy*spd*3.3}else{vx=IN.mx*spd;vy=IN.my*spd}
+ P.x=clamp(P.x+vx*dt,PR,AW-PR);P.y=clamp(P.y+vy*dt,PR,AH-PR);
+ const dx=sx-P.x,dy=sy-P.y,d=hyp(dx,dy);
+ const moving=hyp(IN.mx,IN.my)>0.05||P.dashT>0;
+ if(d>160){P.x=sx;P.y=sy}
+ else if(!moving){const k=Math.min(1,dt*5);P.x+=dx*k;P.y+=dy*k}
+ else if(d>28){const k=Math.min(1,dt*4)*(d-28)/d;P.x+=dx*k;P.y+=dy*k}
+}
+
+// ================= effects =================
+const parts=[],floats=[];let shake=0,hurtFlash=0;const banner={text:'',sub:'',t:0,col:'#fff'};
+function burst(x,y,col,n,spd,life,size){for(let i=0;i<n;i++){if(parts.length>700)parts.shift();const a=Math.random()*TAU,s=spd*(0.3+Math.random());parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:life*(0.5+Math.random()*0.7),max:life,col,size:size*(0.6+Math.random()*0.8)})}}
+function ring(x,y,col){for(let i=0;i<28;i++){const a=i/28*TAU;parts.push({x,y,vx:Math.cos(a)*260,vy:Math.sin(a)*260,life:0.5,max:0.5,col,size:4})}}
+function floatText(x,y,txt,col,size){if(floats.length>60)floats.shift();floats.push({x,y,txt,col,size:size||14,life:0.8})}
+function showBanner(text,sub,col,t){banner.text=text;banner.sub=sub||'';banner.col=col||'#fff';banner.t=t||2.2;banner.max=banner.t}
+function addShake(v){shake=Math.min(28,Math.max(shake,v))}
+function pInfo(pid){const v=view();if(v)for(const p of v.p)if(p[0]===pid)return p;return null}
+function pName(pid){const p=pInfo(pid);return p?p[17]:'Pilot'}
+function pCol(pid){const p=pInfo(pid);return p?COLORS[p[16]]:'#fff'}
+function handleEvents(evs){
+ const mp=myPos();
+ for(const e of evs){
+  switch(e[0]){
+   case 0:{const sz=e[4];burst(e[1],e[2],e[3],sz>2?90:(sz>=1?34:18),sz>2?420:240,sz>2?1.2:0.6,sz>2?6:4);burst(e[1],e[2],'#fff',sz>2?30:6,150,0.3,3);
+    Snd.play('boom',sz);if(hyp(e[1]-mp.x,e[2]-mp.y)<700)addShake(sz>2?22:(sz>=1?6:2.5));break}
+   case 1:{burst(e[1],e[2],'#fff',3,160,0.2,2.5);floatText(e[1]+rand(-6,6),e[2]-8,String(e[3]),e[4]?'#ffcc33':'#e8f0ff',e[4]?18:12);Snd.play('hit');break}
+   case 2:Snd.play('shoot',e[1]===NET.myId);break;
+   case 3:{if(e[3]===1){burst(e[1],e[2],'#ff5f7a',12,120,0.5,4);floatText(e[1],e[2]-10,'+25','#ff8fa3',16);if(e[4]===NET.myId)Snd.play('heart')}else{burst(e[1],e[2],'#ffe27a',5,90,0.35,3);Snd.play('star')}break}
+   case 4:{burst(e[2],e[3],pCol(e[1]),10,180,0.4,4);if(e[1]===NET.myId){addShake(9);hurtFlash=0.35}Snd.play('hurt',e[1]===NET.myId);break}
+   case 5:{burst(e[2],e[3],'#ffffff',30,260,0.8,4);Snd.play('down');addShake(e[1]===NET.myId?14:5);
+    const multi=view()&&view().p.length>1;
+    if(e[1]===NET.myId)showBanner('YOU\'RE DOWN!',multi?'Hang on — a teammate can revive you!':'','#ff5f7a');
+    else showBanner(pName(e[1])+' is down!','Fly next to them to revive','#ffcc33');break}
+   case 6:{ring(e[2],e[3],pCol(e[1]));floatText(e[2],e[3]-30,'REVIVED!','#8dff4a',18);Snd.play('revive');break}
+   case 7:{if(e[2])showBanner('BOSS WAVE '+e[1],'A Boss Core is approaching!','#ff5fa8',2.8);else showBanner('WAVE '+e[1],e[1]===1?'Survive together!':'','#38e8ff');Snd.play('wave');Music.intensity=e[2]?2:1;break}
+   case 8:{Snd.play('boss');addShake(12);break}
+   case 9:{showBanner('BOSS DEFEATED!','Awesome teamwork!','#ffcc33',3);Snd.play('bossdead');addShake(28);ring(e[1],e[2],'#ffcc33');ring(e[1],e[2],'#ff5fa8');Music.intensity=1;break}
+   case 10:Snd.play('eshoot');break;
+   case 11:{burst(e[2],e[3],pCol(e[1]),12,140,0.35,4);Snd.play('dash',e[1]===NET.myId);break}
+   case 12:{showBanner('WAVE '+e[1]+' CLEARED!','+'+(50*e[1])+' bonus','#8dff4a');Snd.play('clear');break}
+   case 13:{if(e[1]===NET.myId)Snd.play('pick');break}
+   case 14:{Snd.play('over');Music.intensity=0;break}
+  }
+ }
+}
+function updateFx(dt){
+ const f=Math.pow(0.08,dt);
+ for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=f;p.vy*=f;p.life-=dt}
+ for(let i=parts.length-1;i>=0;i--)if(parts[i].life<=0)parts.splice(i,1);
+ for(const q of floats){q.y-=40*dt;q.life-=dt}
+ for(let i=floats.length-1;i>=0;i--)if(floats[i].life<=0)floats.splice(i,1);
+ shake*=Math.pow(0.004,dt);if(shake<0.2)shake=0;
+ hurtFlash=Math.max(0,hurtFlash-dt);banner.t-=dt;
+}
+
+// ================= rendering =================
+function resize(){DPR=Math.min(window.devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv.style.width=W+'px';cv.style.height=H+'px';SC=Math.max(W<H?0.55:0.45,Math.min(W/1150,H/720))}
+addEventListener('resize',resize);resize();
+function screenToWorld(sx,sy){return {x:(sx-W/2)/SC+cam.x,y:(sy-H/2)/SC+cam.y}}
+const stars=[];for(let i=0;i<220;i++)stars.push({x:Math.random()*3000,y:Math.random()*2000,z:0.15+Math.random()*0.6,s:Math.random()<0.12?2:1});
+function view(){if(NET.mode==='client')return CV;if(G)return G._view||null;return null}
+function poly(x,y,r,n,rot){cx.beginPath();for(let i=0;i<n;i++){const a=rot+i/n*TAU;cx.lineTo(x+Math.cos(a)*r,y+Math.sin(a)*r)}cx.closePath()}
+function drawBackground(t){
+ cx.fillStyle='#070b1f';cx.fillRect(0,0,W,H);
+ const g=cx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.7);g.addColorStop(0,'rgba(40,30,110,0.35)');g.addColorStop(1,'rgba(0,0,0,0)');cx.fillStyle=g;cx.fillRect(0,0,W,H);
+ cx.fillStyle='#cfd8ff';const mw=W+40,mh=H+40;
+ for(const s of stars){let x=(s.x-cam.x*s.z)%mw,y=(s.y-cam.y*s.z)%mh;if(x<0)x+=mw;if(y<0)y+=mh;cx.globalAlpha=0.25+s.z*0.9*(0.75+0.25*Math.sin(t*2+s.x));cx.fillRect(x-20,y-20,s.s,s.s)}
+ cx.globalAlpha=1;
+}
+function render(dt,t){
+ const v=view();
+ const mp=v?myPos():{x:AW/2+Math.cos(t*0.1)*300,y:AH/2+Math.sin(t*0.13)*200};
+ const viewW=W/SC,viewH=H/SC;
+ let tx=mp.x,ty=mp.y;
+ tx=viewW>=AW+80?AW/2:clamp(tx,viewW/2-40,AW-viewW/2+40);ty=viewH>=AH+80?AH/2:clamp(ty,viewH/2-40,AH-viewH/2+40);
+ const ck=v?Math.min(1,dt*8):Math.min(1,dt*1);cam.x+=(tx-cam.x)*ck;cam.y+=(ty-cam.y)*ck;
+ cx.setTransform(DPR,0,0,DPR,0,0);
+ drawBackground(t);
+ const sx=shake?rand(-shake,shake):0,sy=shake?rand(-shake,shake):0;
+ cx.setTransform(DPR*SC,0,0,DPR*SC,DPR*(W/2-cam.x*SC+sx),DPR*(H/2-cam.y*SC+sy));
+ cx.strokeStyle='rgba(90,120,255,0.10)';cx.lineWidth=1;cx.beginPath();
+ for(let x=0;x<=AW;x+=100){cx.moveTo(x,0);cx.lineTo(x,AH)}for(let y=0;y<=AH;y+=100){cx.moveTo(0,y);cx.lineTo(AW,y)}cx.stroke();
+ cx.strokeStyle='rgba(180,140,255,0.22)';cx.lineWidth=14;cx.strokeRect(-9,-9,AW+18,AH+18);
+ cx.strokeStyle='rgba(110,150,255,0.8)';cx.lineWidth=4;cx.strokeRect(0,0,AW,AH);
+ if(!v){drawDemo(t);return}
+ const isC=NET.mode==='client';const age=isC?Math.min(0.25,(performance.now()-CL.snapT)/1000):0;
+ for(const k of v.k){const o=dpos('k'+k[0],k[2],k[3]);if(k[4]&&Math.floor(t*8)%2)continue;
+  if(k[1]===0){cx.fillStyle='#ffe27a';poly(o.x,o.y,7,4,t*3+k[0]);cx.fill();cx.fillStyle='#fff';poly(o.x,o.y,3,4,t*3+k[0]);cx.fill()}
+  else drawHeart(o.x,o.y,9+Math.sin(t*6)*1.5)}
+ for(const e of v.e){
+  const d=ET[e[1]];const o=dpos('e'+e[0],e[2],e[3]);
+  if(e[6]){const pr=(t*2+e[0]*0.37)%1;cx.strokeStyle=d.col;cx.globalAlpha=0.8-pr*0.6;cx.lineWidth=3;cx.setLineDash([8,8]);cx.beginPath();cx.arc(o.x,o.y,d.r*(1.6-pr*0.6),0,TAU);cx.stroke();cx.setLineDash([]);cx.globalAlpha=0.35;cx.fillStyle=d.col;cx.beginPath();cx.arc(o.x,o.y,d.r*0.5,0,TAU);cx.fill();cx.globalAlpha=1;continue}
+  drawEnemy(e,o.x,o.y,d,t);
+ }
+ const eb=v.eb;
+ cx.fillStyle='#ff4d8d';cx.beginPath();
+ for(let i=0;i<eb.length;i+=4){const x=eb[i]+eb[i+2]*age,y=eb[i+1]+eb[i+3]*age;cx.moveTo(x+8,y);cx.arc(x,y,8,0,TAU)}cx.fill();
+ cx.fillStyle='#ffe0ee';cx.beginPath();
+ for(let i=0;i<eb.length;i+=4){const x=eb[i]+eb[i+2]*age,y=eb[i+1]+eb[i+3]*age;cx.moveTo(x+4,y);cx.arc(x,y,4,0,TAU)}cx.fill();
+ const b=v.b;cx.lineCap='round';
+ cx.globalCompositeOperation='lighter';
+ for(let i=0;i<b.length;i+=6){const x=b[i]+b[i+2]*age,y=b[i+1]+b[i+3]*age,r=b[i+5];cx.strokeStyle=COLORS[b[i+4]];cx.lineWidth=r*1.7;cx.beginPath();cx.moveTo(x,y);cx.lineTo(x-b[i+2]*0.022,y-b[i+3]*0.022);cx.stroke()}
+ cx.globalCompositeOperation='source-over';
+ cx.fillStyle='#fff';cx.beginPath();
+ for(let i=0;i<b.length;i+=6){const x=b[i]+b[i+2]*age,y=b[i+1]+b[i+3]*age,r=b[i+5]*0.55;cx.moveTo(x+r,y);cx.arc(x,y,r,0,TAU)}cx.fill();
+ for(const p of v.p){let o;if(p[0]===NET.myId){const q=myPos();o={x:q.x,y:q.y,a:IN.a}}else o=dpos('p'+p[0],p[1],p[2],p[3]);drawPlayer(p,o,t)}
+ cx.globalCompositeOperation='lighter';
+ for(const q of parts){cx.globalAlpha=Math.max(0,q.life/q.max);cx.fillStyle=q.col;cx.fillRect(q.x-q.size/2,q.y-q.size/2,q.size,q.size)}
+ cx.globalAlpha=1;cx.globalCompositeOperation='source-over';
+ cx.textAlign='center';cx.textBaseline='middle';
+ for(const f of floats){cx.globalAlpha=Math.min(1,f.life*2);cx.font='800 '+f.size+'px system-ui,sans-serif';cx.lineWidth=3;cx.strokeStyle='rgba(0,0,0,0.6)';cx.strokeText(f.txt,f.x,f.y);cx.fillStyle=f.col;cx.fillText(f.txt,f.x,f.y)}
+ cx.globalAlpha=1;
+ cx.setTransform(DPR,0,0,DPR,0,0);
+ drawIndicators(v,t);
+ drawHUD(v,t);
+}
+const demo=[];for(let i=0;i<14;i++)demo.push({ty:i%7,x:Math.random()*AW,y:Math.random()*AH,a:Math.random()*TAU,s:20+Math.random()*40});
+function drawDemo(t){for(const d of demo){d.x=(d.x+Math.cos(d.a)*d.s/60+AW)%AW;d.y=(d.y+Math.sin(d.a)*d.s/60+AH)%AH;const E=ET[d.ty];cx.globalAlpha=0.55;cx.fillStyle=E.col;poly(d.x,d.y,E.r,E.sides,t*E.spin);cx.fill()}cx.globalAlpha=1}
+function drawHeart(x,y,s){cx.fillStyle='#ff5f7a';cx.beginPath();cx.moveTo(x,y+s*0.9);cx.bezierCurveTo(x-s*1.6,y-s*0.2,x-s*0.6,y-s*1.4,x,y-s*0.45);cx.bezierCurveTo(x+s*0.6,y-s*1.4,x+s*1.6,y-s*0.2,x,y+s*0.9);cx.fill();cx.fillStyle='rgba(255,255,255,0.6)';cx.beginPath();cx.arc(x-s*0.45,y-s*0.45,s*0.22,0,TAU);cx.fill()}
+function drawEnemy(e,x,y,d,t){
+ const r=d.r,flash=e[5],wind=e[7],rot=e[8],ang=e[9];
+ if(wind){x+=rand(-2.5,2.5);y+=rand(-2.5,2.5)}
+ cx.globalAlpha=wind?0.45:0.2;cx.fillStyle=wind?'#fff':d.col;cx.beginPath();cx.arc(x,y,r*1.45,0,TAU);cx.fill();cx.globalAlpha=1;
+ if(e[1]===7){
+  cx.fillStyle=flash?'#fff':'#3a0f2e';cx.strokeStyle=d.col;cx.lineWidth=5;
+  cx.beginPath();for(let i=0;i<16;i++){const a=rot+i/16*TAU;const q=i%2?r*0.78:r*1.08;cx.lineTo(x+Math.cos(a)*q,y+Math.sin(a)*q)}cx.closePath();cx.fill();cx.stroke();
+  cx.fillStyle=flash?'#fff':d.col;poly(x,y,r*0.55,8,-rot*1.5);cx.fill();
+  cx.fillStyle='#fff';cx.beginPath();cx.arc(x,y,r*0.32,0,TAU);cx.fill();
+  cx.fillStyle='#1a0620';cx.beginPath();cx.arc(x+Math.cos(ang)*r*0.14,y+Math.sin(ang)*r*0.14,r*0.15,0,TAU);cx.fill();
+  return;
+ }
+ cx.fillStyle=flash?'#fff':d.col;
+ if(e[1]===5){cx.save();cx.translate(x,y);cx.rotate(rot);cx.beginPath();cx.moveTo(r*1.3,0);cx.lineTo(-r*0.9,r*0.9);cx.lineTo(-r*0.4,0);cx.lineTo(-r*0.9,-r*0.9);cx.closePath();cx.fill();cx.restore()}
+ else{poly(x,y,r,d.sides,rot);cx.fill();if(!flash){cx.fillStyle='rgba(0,0,0,0.22)';poly(x,y,r*0.58,d.sides,rot);cx.fill()}}
+ const er=Math.max(3,r*0.32);cx.fillStyle='#fff';cx.beginPath();cx.arc(x,y,er,0,TAU);cx.fill();
+ cx.fillStyle='#111';cx.beginPath();cx.arc(x+Math.cos(ang)*er*0.45,y+Math.sin(ang)*er*0.45,er*0.5,0,TAU);cx.fill();
+ if(e[4]<100&&e[1]!==6){cx.fillStyle='rgba(0,0,0,0.5)';cx.fillRect(x-r,y-r-10,r*2,4);cx.fillStyle=d.col;cx.fillRect(x-r,y-r-10,r*2*e[4]/100,4)}
+}
+function drawPlayer(p,o,t){
+ const x=o.x,y=o.y,a=o.a,col=COLORS[p[16]],down=p[6],isMe=p[0]===NET.myId;
+ if(p[11]>0&&!down){const base=NET.mode==='client'?t*2.4:p[12];for(let i=0;i<p[11];i++){const aa=base+i*TAU/p[11];const dx=x+Math.cos(aa)*44,dy=y+Math.sin(aa)*44;cx.fillStyle=col;cx.globalAlpha=0.3;cx.beginPath();cx.arc(dx,dy,9,0,TAU);cx.fill();cx.globalAlpha=1;cx.fillStyle='#fff';cx.beginPath();cx.arc(dx,dy,4.5,0,TAU);cx.fill()}}
+ if(down){
+  const pulse=0.5+0.5*Math.sin(t*6);
+  cx.strokeStyle=col;cx.globalAlpha=0.25+pulse*0.25;cx.lineWidth=2;cx.setLineDash([6,6]);cx.beginPath();cx.arc(x,y,75,0,TAU);cx.stroke();cx.setLineDash([]);cx.globalAlpha=1;
+  if(p[7]>0){cx.strokeStyle='#8dff4a';cx.lineWidth=6;cx.beginPath();cx.arc(x,y,30,-Math.PI/2,-Math.PI/2+TAU*p[7]/100);cx.stroke()}
+  cx.fillStyle='#5a6383';cx.beginPath();cx.arc(x,y,PR,0,TAU);cx.fill();cx.strokeStyle=col;cx.lineWidth=3;cx.stroke();
+  cx.strokeStyle='#fff';cx.lineWidth=2.5;for(const s of [-1,1]){const ex=x+s*7,ey=y-3;cx.beginPath();cx.moveTo(ex-3,ey-3);cx.lineTo(ex+3,ey+3);cx.moveTo(ex+3,ey-3);cx.lineTo(ex-3,ey+3);cx.stroke()}
+  cx.font='800 13px system-ui,sans-serif';cx.textAlign='center';cx.textBaseline='middle';cx.fillStyle='#ffcc33';cx.fillText(p[7]>0?'REVIVING…':'HELP!',x,y-36-pulse*3);
+ }else{
+  const blink=p[8]&&Math.floor(t*14)%2;
+  cx.globalAlpha=blink?0.12:0.25;cx.fillStyle=col;cx.beginPath();cx.arc(x,y,PR*1.7,0,TAU);cx.fill();
+  cx.globalAlpha=blink?0.45:1;
+  cx.save();cx.translate(x,y);cx.rotate(a);cx.fillStyle='#dfe6ff';cx.fillRect(8,-5,20,10);cx.fillStyle=col;cx.fillRect(24,-6,6,12);cx.restore();
+  cx.fillStyle=col;cx.beginPath();cx.arc(x,y,PR,0,TAU);cx.fill();
+  cx.strokeStyle='rgba(255,255,255,0.85)';cx.lineWidth=2.5;cx.stroke();
+  const ex=Math.cos(a)*4,ey=Math.sin(a)*4;
+  for(const s of [-1,1]){const px=x+Math.cos(a+Math.PI/2)*s*6.5+ex,py=y+Math.sin(a+Math.PI/2)*s*6.5+ey;cx.fillStyle='#fff';cx.beginPath();cx.ellipse(px,py,4.6,5.6,a,0,TAU);cx.fill();cx.fillStyle='#0b1030';cx.beginPath();cx.arc(px+Math.cos(a)*1.8,py+Math.sin(a)*1.8,2.4,0,TAU);cx.fill()}
+  if(p[9]){cx.strokeStyle='#fff';cx.globalAlpha=0.6;cx.lineWidth=3;cx.beginPath();cx.arc(x,y,PR+6,0,TAU);cx.stroke()}
+  cx.globalAlpha=1;
+  const hw=40,hr=p[4]/p[5];cx.fillStyle='rgba(0,0,0,0.55)';cx.fillRect(x-hw/2,y+PR+7,hw,5);cx.fillStyle=hr>0.5?'#8dff4a':hr>0.25?'#ffcc33':'#ff5f7a';cx.fillRect(x-hw/2,y+PR+7,hw*hr,5);
+ }
+ cx.font='700 12px system-ui,sans-serif';cx.textAlign='center';cx.textBaseline='middle';cx.lineWidth=3;cx.strokeStyle='rgba(0,0,0,0.6)';const label=isMe?p[17]+' (you)':p[17];cx.strokeText(label,x,y-PR-12);cx.fillStyle=col;cx.fillText(label,x,y-PR-12);
+}
+function drawIndicators(v,t){
+ cx.textBaseline='middle';
+ for(const p of v.p){if(p[0]===NET.myId)continue;const o=CL.disp.get('p'+p[0])||{x:p[1],y:p[2]};
+  const sx=(o.x-cam.x)*SC+W/2,sy=(o.y-cam.y)*SC+H/2;if(sx>0&&sx<W&&sy>0&&sy<H)continue;
+  const ix=clamp(sx,30,W-30),iy=clamp(sy,80,H-30);const a=Math.atan2(sy-H/2,sx-W/2);
+  cx.save();cx.translate(ix,iy);cx.rotate(a);cx.fillStyle=p[6]?(Math.floor(t*4)%2?'#ff5f7a':'#ffcc33'):COLORS[p[16]];cx.beginPath();cx.moveTo(14,0);cx.lineTo(-8,-10);cx.lineTo(-8,10);cx.closePath();cx.fill();cx.restore();
+  cx.font='700 11px system-ui,sans-serif';cx.textAlign='center';cx.fillStyle='#fff';cx.fillText(p[6]?p[17]+' needs help!':p[17],clamp(ix-Math.cos(a)*30,50,W-50),iy-Math.sin(a)*24);
+ }
+}
+function rr(x,y,w,h,r){cx.beginPath();cx.moveTo(x+r,y);cx.arcTo(x+w,y,x+w,y+h,r);cx.arcTo(x+w,y+h,x,y+h,r);cx.arcTo(x,y+h,x,y,r);cx.arcTo(x,y,x+w,y,r);cx.closePath()}
+function drawHUD(v,t){
+ cx.textBaseline='alphabetic';
+ cx.textAlign='left';cx.fillStyle='rgba(10,14,40,0.6)';rr(10,10,200,58,10);cx.fill();
+ cx.fillStyle='#9fb0e0';cx.font='700 12px system-ui,sans-serif';cx.fillText('WAVE',22,30);cx.fillText('TEAM SCORE',82,30);
+ cx.fillStyle='#fff';cx.font='900 24px system-ui,sans-serif';cx.fillText(String(v.w||'-'),22,57);cx.fillStyle='#ffcc33';cx.fillText(String(v.sc),82,57);
+ if(v.ph==='play'&&v.left>0){cx.fillStyle='rgba(10,14,40,0.6)';rr(10,72,200,22,8);cx.fill();cx.fillStyle='#ff8fa3';cx.font='700 12px system-ui,sans-serif';cx.fillText('Glitch-bots left: '+v.left,22,87)}
+ let y=H-16-v.p.length*30;
+ if(IN.touch)y=102;
+ for(const p of v.p){const col=COLORS[p[16]];cx.fillStyle='rgba(10,14,40,0.6)';rr(10,y,200,26,8);cx.fill();cx.fillStyle=col;cx.beginPath();cx.arc(24,y+13,7,0,TAU);cx.fill();
+  cx.fillStyle='#fff';cx.font='700 12px system-ui,sans-serif';cx.textAlign='left';cx.fillText(String(p[17]).slice(0,11),36,y+17);
+  if(p[6]){cx.fillStyle='#ff5f7a';cx.fillText('DOWN',150,y+17)}else{cx.fillStyle='rgba(0,0,0,0.5)';cx.fillRect(120,y+9,80,8);const hr=p[4]/p[5];cx.fillStyle=hr>0.5?'#8dff4a':hr>0.25?'#ffcc33':'#ff5f7a';cx.fillRect(120,y+9,80*hr,8)}
+  y+=30}
+ const m=myView();
+ let cd=1;if(m){cd=NET.mode==='client'?Math.max(CL.pred.dashCd/(m[18]||2.2),m[13]/100):m[13]/100}
+ if(m&&!m[6]&&!IN.touch&&(v.ph==='play'||v.ph==='countdown')){const cxp=W<560?W-75:W/2,cyp=H-24;cx.fillStyle='rgba(10,14,40,0.6)';rr(cxp-60,cyp-18,120,26,8);cx.fill();cx.fillStyle=cd<=0.01?'#38e8ff':'#4a5688';cx.fillRect(cxp-52,cyp-3,104*(1-cd),6);cx.fillStyle='#fff';cx.font='800 10px system-ui,sans-serif';cx.textAlign='center';cx.fillText(cd<=0.01?'DASH READY':'DASH',cxp,cyp-6)}
+ if(v.bh>=0){const bw=Math.min(520,W-260),bx=W/2-bw/2;cx.fillStyle='rgba(10,14,40,0.7)';rr(bx-6,12,bw+12,30,8);cx.fill();cx.fillStyle='#3a0f2e';cx.fillRect(bx,26,bw,10);cx.fillStyle='#ff3cac';cx.fillRect(bx,26,bw*v.bh,10);cx.fillStyle='#fff';cx.font='800 11px system-ui,sans-serif';cx.textAlign='center';cx.fillText('BOSS CORE',W/2,23)}
+ if(v.ph==='countdown'){const n=Math.max(1,v.pt);cx.textAlign='center';cx.font='900 90px system-ui,sans-serif';cx.lineWidth=6;cx.strokeStyle='rgba(0,0,0,0.4)';cx.strokeText(String(n),W/2,H/2-70);cx.fillStyle='rgba(255,255,255,0.92)';cx.fillText(String(n),W/2,H/2-70);cx.font='800 18px system-ui,sans-serif';cx.fillStyle='#9fb0e0';cx.fillText('Wave '+((v.w||0)+1)+' incoming — get ready!',W/2,H/2-30);
+  if(UI.lastCount!==n){UI.lastCount=n;Snd.play('beep',0)}}
+ else UI.lastCount=-1;
+ if(banner.t>0){const a=clamp(Math.min(banner.t*2,(banner.max-banner.t)*5),0,1);cx.globalAlpha=a;cx.textAlign='center';cx.font='900 '+Math.round(Math.min(52,W/12))+'px system-ui,sans-serif';cx.lineWidth=6;cx.strokeStyle='rgba(0,0,0,0.5)';cx.strokeText(banner.text,W/2,H*0.28);cx.fillStyle=banner.col;cx.fillText(banner.text,W/2,H*0.28);if(banner.sub){cx.font='700 18px system-ui,sans-serif';cx.fillStyle='#e8f0ff';cx.fillText(banner.sub,W/2,H*0.28+32)}cx.globalAlpha=1}
+ if(hurtFlash>0){const g=cx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.3,W/2,H/2,Math.max(W,H)*0.7);g.addColorStop(0,'rgba(255,40,80,0)');g.addColorStop(1,'rgba(255,40,80,'+Math.min(0.5,hurtFlash*1.2).toFixed(2)+')');cx.fillStyle=g;cx.fillRect(0,0,W,H)}
+ if(IN.auto&&!IN.touch){cx.textAlign='right';cx.font='700 11px system-ui,sans-serif';cx.fillStyle='#8dff4a';cx.fillText('AUTO-AIM ON (F)',W-12,H-12)}
+ if(NET.mode==='host'&&NET.code){cx.textAlign='right';cx.font='700 12px system-ui,sans-serif';cx.fillStyle='#9fb0e0';cx.fillText('ROOM '+NET.code,W-12,58)}
+ if(IN.touch){
+  cx.globalAlpha=0.35;cx.strokeStyle='#fff';cx.lineWidth=3;
+  for(const s of [TS.move,TS.aim]){if(!s)continue;cx.beginPath();cx.arc(s.ox,s.oy,55,0,TAU);cx.stroke();const dx=s.x-s.ox,dy=s.y-s.oy,d=hyp(dx,dy),k=d>55?55/d:1;cx.fillStyle='#fff';cx.beginPath();cx.arc(s.ox+dx*k,s.oy+dy*k,22,0,TAU);cx.fill()}
+  const ready=cd<=0.01;cx.globalAlpha=ready?0.75:0.35;cx.fillStyle=ready?'#38e8ff':'#556';cx.beginPath();cx.arc(W-70,H-80,44,0,TAU);cx.fill();cx.globalAlpha=1;cx.fillStyle='#061022';cx.font='900 14px system-ui,sans-serif';cx.textAlign='center';cx.fillText('DASH',W-70,H-75);
+ }
+}
+
+// ================= UI / screens =================
+const UI={lastPh:null,lastCount:-1};
+function hideAll(){for(const s of document.querySelectorAll('.screen'))s.classList.remove('show')}
+function showScreen(id){hideAll();const el=document.getElementById(id);if(el)el.classList.add('show');$('#hudbtns').style.display=(id==='title'||id==='how'||id==='connecting')?'none':'flex';$('#hPause').style.display=NET.mode==='solo'?'inline-block':'none'}
+function setLobbyStatus(s){$('#lobbyStatus').textContent=s}
+function renderLobby(){
+ const v=view();const ul=$('#plist');
+ const list=v?v.p:[];
+ const sig=list.map(p=>p[0]+p[17]+p[16]).join('|')+NET.mode;
+ if(ul.dataset.sig===sig)return;ul.dataset.sig=sig;ul.innerHTML='';
+ for(const p of list){const li=document.createElement('li');const dot=document.createElement('span');dot.className='dot';dot.style.background=COLORS[p[16]];li.appendChild(dot);const nm=document.createElement('span');nm.textContent=p[17]+(p[0]==='h'?'  (host)':'')+(p[0]===NET.myId?'  — you':'');li.appendChild(nm);ul.appendChild(li)}
+ for(let i=list.length;i<4;i++){const li=document.createElement('li');li.style.opacity=0.35;li.textContent='Open slot';ul.appendChild(li)}
+ const host=NET.mode==='host';
+ $('#bStart').style.display=host?'block':'none';
+ if(!host){$('#roomCode').textContent=NET.code;$('#lobbyHint').textContent='You\'re in! Waiting for the host to start…';$('#bCopy').style.display='none';setLobbyStatus('')}
+ else{$('#lobbyHint').textContent='Friends: open this game on their device, type this code, press Join.';if(list.length>1)setLobbyStatus(list.length+' pilots in the squad. Press Start when everyone is in!')}
+ $('#bStart').textContent=list.length>1?'\u25B6 Start Game ('+list.length+' pilots)':'\u25B6 Start Game';
+}
+function renderCards(){
+ let choices,ups,picked;
+ if(NET.mode==='client'){choices=CL.choices;ups=CL.ups;picked=CL.picked}else{const p=G&&G.players.get(NET.myId);if(!p)return;choices=p.choices;ups=p.ups;picked=p.picked}
+ const box=$('#cards');box.innerHTML='';
+ if(!choices){$('#upWait').textContent='Loading upgrades…';return}
+ choices.forEach((k,i)=>{const u=UPG[k];if(!u)return;const c=document.createElement('div');c.className='card'+(picked?' dim':'');c.innerHTML='<div class="key">['+(i+1)+']</div><div class="ic"></div><div class="nm"></div><div class="ds"></div><div class="lv"></div>';
+  c.querySelector('.ic').textContent=u.ic;c.querySelector('.nm').textContent=u.name;c.querySelector('.ds').textContent=u.desc;c.querySelector('.lv').textContent=(ups&&ups[k])?'Level '+(ups[k]+1):'NEW';
+  c.addEventListener('click',()=>pickCard(i));box.appendChild(c)});
+}
+function pickCard(i){
+ if(NET.mode==='client'){if(CL.picked||!CL.choices)return;CL.picked=true;try{NET.conn.send({t:'pick',i})}catch(e){}Snd.play('pick')}
+ else{const p=G&&G.players.get(NET.myId);if(!p||p.picked)return;applyPick(p,i)}
+ document.querySelectorAll('#cards .card').forEach((c,j)=>c.classList.add(j===i?'chosen':'dim'));
+}
+function syncUI(v){
+ if(!v)return;
+ const ph=v.ph;
+ if(ph!==UI.lastPh){
+  const prev=UI.lastPh;UI.lastPh=ph;
+  if(ph==='lobby'){showScreen('lobby');$('#plist').dataset.sig='';renderLobby();Music.intensity=0}
+  else if(ph==='countdown'||ph==='play'){if(!paused)showScreen('game')}
+  else if(ph==='upgrade'){showScreen('upgrade');$('#upTitle').textContent='Wave '+v.w+' cleared!';renderCards()}
+  else if(ph==='over')showOver(v);
+  if(ph==='countdown'&&prev!=='upgrade'){parts.length=0;floats.length=0}
+  if(ph==='countdown'||ph==='play')Music.intensity=Math.max(Music.intensity,1);
+ }
+ if(ph==='lobby')renderLobby();
+ if(ph==='upgrade'){const n=v.p.filter(p=>p[10]).length;const tot=v.p.length;const mine=v.p.find(p=>p[0]===NET.myId);
+  const txt=tot>1?('Squad ready: '+n+'/'+tot+(v.pt<1000?' \u00b7 auto-pick in '+Math.max(0,v.pt)+'s':'')):(mine&&mine[10]?'Get ready…':'');
+  if($('#upWait').textContent!==txt)$('#upWait').textContent=txt}
+}
+function showOver(v){
+ showScreen('over');
+ const best=STORE.get('best',{score:0,wave:0});let nb=false;
+ if(v.sc>best.score){best.score=v.sc;nb=v.sc>0}if(v.w>best.wave)best.wave=v.w;STORE.set('best',best);
+ $('#ovScore').textContent=v.sc;
+ const ob=$('#ovBest');ob.innerHTML='';const b=document.createElement('div');b.textContent=nb?'NEW HIGH SCORE!':'Best: '+best.score+'  \u00b7  Best wave: '+best.wave;if(nb)b.className='newbest';ob.appendChild(b);
+ const st=$('#ovStats');st.innerHTML='';
+ const r=document.createElement('div');r.innerHTML='<span>Reached wave</span><b></b>';r.querySelector('b').textContent=v.w;st.appendChild(r);
+ for(const p of v.p){const d=document.createElement('div');const a=document.createElement('span');a.textContent=p[17];a.style.color=COLORS[p[16]];const k=document.createElement('b');k.textContent=p[15]+' takedowns';d.appendChild(a);d.appendChild(k);st.appendChild(d)}
+ const canRestart=NET.mode!=='client';$('#bAgain').style.display=canRestart?'block':'none';$('#ovWait').style.display=canRestart?'none':'block';
+}
+function togglePause(){
+ if(NET.mode!=='solo'){if(NET.mode)toast('No pausing in online co-op — your squad needs you!',1800);return}
+ if(!G||G.phase==='over'||G.phase==='upgrade')return;
+ paused=!paused;showScreen(paused?'pause':'game');
+}
+function updateBest(){const b=STORE.get('best',{score:0,wave:0});$('#best').textContent=b.score?('High score: '+b.score+'  \u00b7  Best wave: '+b.wave):'Tip: play with friends and revive each other to survive!'}
+function updateMuteLabels(){$('#bMute').textContent=Snd.muted?'Sound: off':'Sound: on';$('#hMute').textContent=Snd.muted?'Sound: off':'Sound: on'}
+function updateAutoLabel(){$('#hAuto').textContent=IN.auto?'Auto-aim: ON':'Auto-aim: off'}
+function startSolo(){
+ NET.mode='solo';NET.myId='h';UI.lastPh=null;paused=false;G=newGame();G.players.set('h',newPlayer('h',me.name||'Pilot',me.ci));startGame();showScreen('game');
+}
+(function(){
+ const nm=$('#name');nm.value=me.name;nm.addEventListener('input',()=>{const raw=nm.value.trim();me.name=raw?cleanName(raw):'';STORE.set('name',raw.slice(0,12))});
+ const sw=$('#swatches');COLORS.forEach((c,i)=>{const d=document.createElement('div');d.className='sw'+(i===me.ci?' sel':'');d.style.background=c;d.title='Pick your color';d.addEventListener('click',()=>{me.ci=i;STORE.set('color',i);for(const x of sw.children)x.classList.remove('sel');d.classList.add('sel');Snd.init();Snd.play('click')});sw.appendChild(d)});
+ const needName=()=>{if(!me.name){me.name=['Nova','Comet','Orbit','Pixel','Rocket','Zap','Blaze','Astro'][Math.random()*8|0]+(10+Math.random()*90|0);nm.value=me.name;STORE.set('name',me.name)}};
+ $('#bSolo').onclick=()=>{Snd.init();Snd.play('click');needName();startSolo()};
+ $('#bHost').onclick=()=>{Snd.init();Snd.play('click');needName();hostGame()};
+ $('#bJoin').onclick=()=>{Snd.init();Snd.play('click');needName();joinGame($('#code').value)};
+ $('#code').addEventListener('input',e=>{e.target.value=e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4)});
+ $('#bHow').onclick=()=>{Snd.init();showScreen('how')};
+ $('#bHowBack').onclick=()=>showScreen('title');
+ $('#bMute').onclick=()=>{Snd.init();Snd.setMuted(!Snd.muted)};
+ $('#hMute').onclick=e=>{e.currentTarget.blur();Snd.init();Snd.setMuted(!Snd.muted)};
+ $('#hAuto').onclick=e=>{e.currentTarget.blur();toggleAuto()};
+ $('#hPause').onclick=e=>{e.currentTarget.blur();togglePause()};
+ $('#bStart').onclick=()=>{if(NET.mode==='host'&&G){Snd.play('click');startGame()}};
+ $('#bLeave').onclick=()=>backToTitle();
+ $('#bAgain').onclick=()=>{if(G){Snd.play('click');startGame()}};
+ $('#bMenu').onclick=()=>backToTitle();
+ $('#bResume').onclick=()=>togglePause();
+ $('#bQuit').onclick=()=>backToTitle();
+ $('#bConnCancel').onclick=()=>backToTitle();
+ $('#bCopy').onclick=()=>{const url=location.href.split('?')[0].split('#')[0]+'?join='+NET.code;(navigator.clipboard?navigator.clipboard.writeText(url):Promise.reject()).then(()=>toast('Invite link copied!')).catch(()=>toast(url,6000))};
+ const q=new URLSearchParams(location.search).get('join');if(q){$('#code').value=q.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);setTimeout(()=>toast('Type your name, then press Join!',4000),300)}
+ updateBest();updateMuteLabels();updateAutoLabel();
+ addEventListener('beforeunload',()=>{if(NET.peer)try{NET.peer.destroy()}catch(e){}});
+})();
+
+// ================= main loop =================
+let lastT=performance.now(),acc=0,tickN=0;
+function frame(now){
+ requestAnimationFrame(frame);
+ const dt=Math.min(0.1,Math.max(0,(now-lastT)/1000));lastT=now;FRAME++;
+ const t=now/1000;
+ try{
+  if(NET.mode)readInput();
+  if((NET.mode==='solo'||NET.mode==='host')&&G){
+   const p=G.players.get(NET.myId);if(p)p.inp={mx:IN.mx,my:IN.my,a:IN.a,f:IN.f,d:IN.d};
+   if(!paused){acc+=dt;let n=0;while(acc>=STEP&&n<8){simTick(STEP);acc-=STEP;n++;tickN++;
+    const evs=G.events;G.events=[];if(evs.length){handleEvents(evs);if(NET.mode==='host')for(const e of evs)G.netEv.push(e)}
+    if(NET.mode==='host'&&tickN%3===0)broadcast()}
+    if(acc>STEP*8)acc=0}
+   G._view=makeSnap();
+  }else if(NET.mode==='client'){sendInput(now);predict(dt);smoothDisp(dt)}
+  if(FRAME%60===0)checkTimeouts(now);
+  updateFx(dt);
+  render(dt,t);
+  if(NET.mode)syncUI(view());
+ }catch(err){console.error(err)}
+}
+requestAnimationFrame(frame);
+// host keeps simulating (slowly) if its tab is hidden, so friends aren't frozen out
+let hidT=0;
+setInterval(()=>{const now=performance.now();if(!(document.hidden&&NET.mode==='host'&&G)){hidT=now;return}
+ let n=Math.min(60,Math.round((now-hidT)/1000/STEP));hidT=now;acc=0;
+ for(let i=0;i<n;i++){simTick(STEP);tickN++;const evs=G.events;G.events=[];for(const e of evs)G.netEv.push(e)}if(n)broadcast()},100);
+window.__ssq={cam,dims:()=>({W,H,SC,DPR,cw:cv.width,iw:innerWidth}),get G(){return G},NET,IN,CL,get CV(){return CV},startWave:n=>startWave(n),view,KEYS};
+</script>
+</body>
+</html>
