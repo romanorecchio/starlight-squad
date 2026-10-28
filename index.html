@@ -98,7 +98,7 @@ h2{margin:6px 0;font-size:26px}
     <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> pick an upgrade</p>
     <p><b>Touch:</b> drag the left side to move, drag the right side to aim (auto-aim is on otherwise), tap the DASH button.</p>
     <h3>Co-op</h3>
-    <p>One person presses <b>Host Co-op Game</b> and gets a 4-letter room code. Friends open the same game on their own device, type the code and press <b>Join</b>. Up to 4 pilots.</p>
+    <p>One person presses <b>Host Co-op Game</b> and gets a 4-letter room code. Friends open the same game on their own device, type the code and press <b>Join</b>. Up to 5 pilots.</p>
     <p>If a teammate gets knocked down, fly next to them and stay close to <b>revive</b> them. If the whole squad goes down it's game over. Downed pilots also come back at the end of each wave.</p>
     <p>Collect <b>stars</b> for points and <b>hearts</b> to heal.</p>
     <div style="text-align:center"><button id="bHowBack" class="big">Got it!</button></div>
@@ -188,6 +188,7 @@ function toast(msg,ms){const t=$('#toast');t.textContent=msg;t.style.display='bl
 
 // ================= constants =================
 const AW=1800,AH=1200,PR=18,STEP=1/60;
+const MAXP=5;
 const COLORS=['#38e8ff','#ff5fa8','#8dff4a','#ffcc33','#b48cff','#ff8a3d'];
 const ET=[
  {n:'chaser',r:16,hp:22,spd:125,dmg:12,col:'#ff4d6d',score:10,sides:4,spin:2},
@@ -286,7 +287,7 @@ const me={name:STORE.get('name','')?cleanName(STORE.get('name','')):'',ci:STORE.
 
 function newGame(){return {phase:'lobby',wave:0,score:0,t:0,pt:0,players:new Map(),enemies:[],bullets:[],ebullets:[],pickups:[],queue:[],spawnT:0,spawnRate:1,nid:1,events:[],netEv:[],boss:null}}
 function baseStats(){return {maxhp:100,spd:250,dmg:10,rate:5,multi:1,pierce:0,bounce:0,crit:0.05,regen:0,dashcd:2.2,orbit:0,magnet:90,vamp:0,revive:1,bsize:5,bspd:720}}
-function newPlayer(id,name,ci){const p={id,name:cleanName(name),ci,x:AW/2,y:AH/2,ang:0,hp:100,down:false,rev:0,inv:1.5,fireCd:0,dashCd:0,dashT:0,ddx:0,ddy:0,kx:0,ky:0,s:baseStats(),inp:{mx:0,my:0,a:0,f:0,d:0},lastD:0,choices:null,picked:true,ups:{},orbA:0,orbCd:0,kills:0};placePlayer(p,G?G.players.size:0,4);return p}
+function newPlayer(id,name,ci){const p={id,name:cleanName(name),ci,x:AW/2,y:AH/2,ang:0,hp:100,down:false,rev:0,inv:1.5,fireCd:0,dashCd:0,dashT:0,ddx:0,ddy:0,kx:0,ky:0,s:baseStats(),inp:{mx:0,my:0,a:0,f:0,d:0},lastD:0,choices:null,picked:true,ups:{},orbA:0,orbCd:0,kills:0};placePlayer(p,G?G.players.size:0,MAXP);return p}
 function placePlayer(p,i,n){const a=i/Math.max(1,n)*TAU+0.6;p.x=AW/2+Math.cos(a)*(n>1?70:0);p.y=AH/2+Math.sin(a)*(n>1?70:0)}
 function resetPlayer(p,i,n){p.s=baseStats();p.hp=p.s.maxhp;p.down=false;p.rev=0;p.inv=2;p.fireCd=0;p.dashCd=0;p.dashT=0;p.kx=p.ky=0;p.ups={};p.choices=null;p.picked=true;p.kills=0;p.orbA=0;placePlayer(p,i,n)}
 function ev(...a){G.events.push(a)}
@@ -565,7 +566,7 @@ function onHostData(c,d){
  const info=NET.conns.get(c.peer);if(info)info.seen=performance.now();
  if(d.t==='hello'){
   if(info)return;
-  if(G.players.size>=4){c.send({t:'full'});setTimeout(()=>c.close(),400);return}
+  if(G.players.size>=MAXP){c.send({t:'full'});setTimeout(()=>c.close(),400);return}
   const pid='p'+(NET.nextPid++);const p=newPlayer(pid,d.name,freeColor((d.ci|0)%COLORS.length));
   if(G.phase!=='lobby'){p.inv=2.5;const a=alivePlayers()[0];if(a){p.x=clamp(a.x+30,PR,AW-PR);p.y=clamp(a.y+30,PR,AH-PR)}}
   G.players.set(pid,p);NET.conns.set(c.peer,{conn:c,pid,seen:performance.now()});
@@ -614,7 +615,7 @@ function failJoin(msg){if(NET.mode!=='client')return;backToTitle();toast(msg,600
 function onClientData(d){
  if(!d||typeof d!=='object')return;
  if(d.t==='wel'){NET.myId=d.id;NET.myIdSet=true;clearTimeout(NET.joinTimer);showScreen('game');Snd.play('join');toast('Joined room '+d.code+'!')}
- else if(d.t==='full'){failJoin('That room is full (4 pilots max).')}
+ else if(d.t==='full'){failJoin('That room is full (5 pilots max).')}
  else if(d.t==='ch'){CL.choices=d.c;CL.ups=d.ups||{};CL.picked=false;if(CV&&CV.ph==='upgrade')renderCards()}
  else if(d.t==='s'){CL.snap=d;CL.snapT=performance.now();CV=d;if(d.ev)handleEvents(d.ev)}
 }
