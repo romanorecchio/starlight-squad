@@ -201,26 +201,32 @@ const ET=[
  {n:'boss',r:66,hp:950,spd:55,dmg:28,col:'#ff3cac',score:500,sides:8,spin:0.4},
 ];
 const UPG={
- dmg:{name:'Power Core',desc:'+25% damage',ic:'\u{1F4A5}',max:Infinity,ap:s=>s.dmg*=1.25},
- rate:{name:'Rapid Fire',desc:'+20% fire rate (past 30 shots/s it turns into +damage)',ic:'\u26A1',max:Infinity,ap:s=>s.rate*=1.2},
- multi:{name:'Split Shot',desc:'+1 projectile per shot',ic:'\u{1F531}',max:5,ap:s=>s.multi++},
- speed:{name:'Thrusters',desc:'+12% move speed (+3% after 5)',ic:'\u{1F680}',max:Infinity,can:s=>s.spd<559,ap:(s,p)=>{s.spd=Math.min(560,s.spd*((p.ups.speed||0)<5?1.12:1.03))}},
- hp:{name:'Hull Plating',desc:'+10% (+30) max HP and full heal',ic:'\u{1F6E1}\uFE0F',max:Infinity,ap:(s,p)=>{s.maxhp=Math.round(s.maxhp*1.1+30);p.hp=s.maxhp}},
- pierce:{name:'Piercing Rounds',desc:'Shots pass through +1 enemy',ic:'\u{1F3AF}',max:4,ap:s=>s.pierce++},
- bounce:{name:'Ricochet',desc:'Shots bounce off walls',ic:'\u{1F501}',max:3,ap:s=>s.bounce++},
- crit:{name:'Lucky Star',desc:'+10% crit chance; at 100%: +25% crit damage',ic:'\u2B50',max:Infinity,ap:s=>{if(s.crit<0.95)s.crit=Math.min(1,s.crit+0.1);else s.critm+=0.25}},
- regen:{name:'Nanobots',desc:'Regenerate +2 HP/s (or +1% max HP/s)',ic:'\u{1F49A}',max:Infinity,ap:s=>s.regen+=Math.max(2,s.maxhp*0.01)},
- dash:{name:'Blink Drive',desc:'Dash recharges 30% faster',ic:'\u{1F4A8}',max:4,ap:s=>s.dashcd*=0.7},
- orbit:{name:'Orbit Drone',desc:'A drone circles you and zaps foes',ic:'\u{1F6F0}\uFE0F',max:4,ap:s=>s.orbit++},
- magnet:{name:'Tractor Beam',desc:'Grab pickups from much farther',ic:'\u{1F9F2}',max:3,ap:s=>s.magnet+=110},
- vamp:{name:'Star Siphon',desc:'Heal +3 HP (or +0.5% max HP) per takedown',ic:'\u2728',max:Infinity,ap:s=>s.vamp+=Math.max(3,s.maxhp*0.005)},
- armor:{name:'Deflector',desc:'Take 8% less damage',ic:'\u{1F6E1}\uFE0F',max:Infinity,can:s=>s.armor>0.26,ap:s=>s.armor*=0.92},
- boost:{name:'Star Power',desc:'+10% damage, +10% max HP, +3% fire rate',ic:'\u{1F31F}',max:Infinity,ap:(s,p)=>{s.dmg*=1.1;s.maxhp=Math.round(s.maxhp*1.1);s.rate*=1.03;p.hp=Math.min(s.maxhp,p.hp+s.maxhp*0.1)}},
- medic:{name:'Medic Kit',desc:'Revive teammates 2x faster',ic:'\u2795',max:2,ap:s=>s.revive*=2},
- big:{name:'Mega Bullets',desc:'Bigger, faster shots',ic:'\u{1F535}',max:3,ap:s=>{s.bsize*=1.35;s.bspd*=1.15}},
+ dmg:{name:'Power Core',desc:'+25% damage',ic:'\u{1F4A5}',max:Infinity},
+ rate:{name:'Rapid Fire',desc:'+20% fire rate',ic:'\u26A1',max:Infinity},
+ multi:{name:'Split Shot',desc:'+1 projectile per shot',ic:'\u{1F531}',max:Infinity},
+ speed:{name:'Thrusters',desc:'+12% move speed (past top speed it becomes dodge chance)',ic:'\u{1F680}',max:Infinity},
+ hp:{name:'Hull Plating',desc:'+10% (+30) max HP and full heal',ic:'\u{1F6E1}\uFE0F',max:Infinity,on:(s,p)=>{p.hp=s.maxhp}},
+ pierce:{name:'Piercing Rounds',desc:'Shots pass through +1 enemy',ic:'\u{1F3AF}',max:Infinity},
+ bounce:{name:'Ricochet',desc:'+1 wall bounce per shot',ic:'\u{1F501}',max:Infinity},
+ crit:{name:'Lucky Star',desc:'+10% crit chance (over 100%: double & triple crits)',ic:'\u2B50',max:Infinity},
+ regen:{name:'Nanobots',desc:'Regenerate +2 HP/s (or +1% max HP/s)',ic:'\u{1F49A}',max:Infinity},
+ dash:{name:'Blink Drive',desc:'Dash recharges faster',ic:'\u{1F4A8}',max:Infinity},
+ orbit:{name:'Orbit Drone',desc:'A drone circles you and zaps foes',ic:'\u{1F6F0}\uFE0F',max:Infinity},
+ magnet:{name:'Tractor Beam',desc:'Grab pickups from much farther',ic:'\u{1F9F2}',max:Infinity},
+ vamp:{name:'Star Siphon',desc:'Heal +3 HP (or +0.5% max HP) per takedown',ic:'\u2728',max:Infinity},
+ armor:{name:'Deflector',desc:'Take 8% less damage (every stack)',ic:'\u{1F6E1}\uFE0F',max:Infinity},
+ boost:{name:'Star Power',desc:'+10% damage, +10% max HP, +3% fire rate',ic:'\u{1F31F}',max:Infinity,on:(s,p)=>{p.hp=Math.min(s.maxhp,p.hp+s.maxhp*0.1)}},
+ medic:{name:'Medic Kit',desc:'Revive teammates 2x faster',ic:'\u2795',max:Infinity},
+ big:{name:'Mega Bullets',desc:'+35% bullet size, +15% bullet speed (past the limit it becomes damage)',ic:'\u{1F535}',max:Infinity},
 };
 const WCAP=240; // max enemies on the field in whole-wave-at-once mode (extra enemies fold into tougher ones)
-const RCAP=30; // max real shots per second; extra fire rate becomes damage
+const VPT=2; // max separate volleys emitted per player per tick; faster fire merges into heavy bullets (same total damage)
+const MVIS=9; // max visible projectiles per volley; extra Split Shots merge into them (same total damage)
+const OVIS=12; // max visible orbit drones; extras add their zaps to the visible ones
+const MOVECAP=950; // top movement speed (px/s); extra Thrusters become dodge chance
+const BRCAP=60,BVCAP=1800; // bullet size/speed limits for collision; extra Mega Bullets become damage
+const BCAP=1400; // soft cap on live player bullets (beyond this, volleys merge harder)
+const SNB=450; // max bullets sent per network snapshot (clients also draw a predicted stream)
 const PREFIX='starlightsquad-v1-';
 const CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ';
 
@@ -291,6 +297,21 @@ const me={name:STORE.get('name','')?cleanName(STORE.get('name','')):'',ci:STORE.
 
 function newGame(){return {phase:'lobby',wave:0,score:0,t:0,pt:0,players:new Map(),enemies:[],bullets:[],ebullets:[],pickups:[],queue:[],spawnT:0,spawnRate:1,nid:1,events:[],netEv:[],boss:null}}
 function baseStats(){return {maxhp:100,spd:250,dmg:10,rate:5,multi:1,pierce:0,bounce:0,crit:0.05,regen:0,critm:2,armor:1,dashcd:2.2,orbit:0,magnet:90,vamp:0,revive:1,bsize:5,bspd:720}}
+function calcStats(u){
+ const n=k=>Math.max(0,u[k]|0);const s=baseStats();const P=Math.pow;
+ s.dmg=10*P(1.25,n('dmg'))*P(1.1,n('boost'));
+ s.rate=5*P(1.2,n('rate'))*P(1.03,n('boost'));
+ s.multi=1+n('multi');s.pierce=n('pierce');s.bounce=n('bounce');s.orbit=n('orbit');s.magnet=90+110*n('magnet');
+ s.spd=250*P(1.12,n('speed'));s.mv=Math.min(s.spd,MOVECAP);s.dodge=s.spd>MOVECAP?1-MOVECAP/s.spd:0;
+ let hp=100;for(let i=0,m=n('hp');i<m;i++)hp=Math.round(hp*1.1+30);for(let i=0,m=n('boost');i<m;i++)hp=Math.round(hp*1.1);s.maxhp=hp;
+ s.crit=0.05+0.1*n('crit');
+ s.regen=n('regen')*Math.max(2,hp*0.01);s.vamp=n('vamp')*Math.max(3,hp*0.005);
+ s.dashcd=Math.max(1e-300,2.2*P(0.7,n('dash')));
+ s.armor=P(0.92,n('armor'));
+ s.revive=P(2,Math.min(n('medic'),500));
+ const nb=n('big');s.bsize=5*P(1.35,nb);s.bspd=720*P(1.15,nb);s.br=Math.min(s.bsize,BRCAP);s.bv=Math.min(s.bspd,BVCAP);s.bdm=(s.bsize/s.br)*(s.bspd/s.bv);
+ return s}
+function addUp(p,k,d){p.ups[k]=Math.max(0,(p.ups[k]||0)+d);if(!p.ups[k])delete p.ups[k];p.s=calcStats(p.ups);if(d>0&&UPG[k].on)UPG[k].on(p.s,p);p.hp=Math.min(p.hp,p.s.maxhp)}
 function newPlayer(id,name,ci){const p={id,name:cleanName(name),ci,x:AW/2,y:AH/2,ang:0,hp:100,down:false,rev:0,inv:1.5,fireCd:0,dashCd:0,dashT:0,ddx:0,ddy:0,kx:0,ky:0,s:baseStats(),inp:{mx:0,my:0,a:0,f:0,d:0},lastD:0,choices:null,picked:true,ups:{},orbA:0,orbCd:0,kills:0};placePlayer(p,G?G.players.size:0,MAXP);return p}
 function placePlayer(p,i,n){const a=i/Math.max(1,n)*TAU+0.6;p.x=AW/2+Math.cos(a)*(n>1?70:0);p.y=AH/2+Math.sin(a)*(n>1?70:0)}
 function resetPlayer(p,i,n){p.banked=0;if(p.cu){p.cu=null;hostSendTo(p.id,{t:'cu',done:1})}p.nick=null;p.s=baseStats();p.hp=p.s.maxhp;p.down=false;p.rev=0;p.inv=2;p.fireCd=0;p.dashCd=0;p.dashT=0;p.kx=p.ky=0;p.ups={};p.choices=null;p.picked=true;p.kills=0;p.orbA=0;placePlayer(p,i,n)}
@@ -343,18 +364,25 @@ function enemyGrid(E){const g=new Map();for(const e of E){if(e.sp>0||e.dead)cont
 function eShoot(x,y,a,spd,dmg){G.ebullets.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,r:7,life:6,dmg})}
 function damagePlayer(p,d,fx,fy){
  if(p.down||p.inv>0||p.dashT>0)return;
+ if(p.s.dodge>0&&Math.random()<p.s.dodge){p.inv=Math.max(p.inv,0.12);return}
  p.hp-=d*(p.s.armor||1);p.inv=0.75;
  if(fx!==undefined){const dx=p.x-fx,dy=p.y-fy,l=hyp(dx,dy)||1;p.kx+=dx/l*320;p.ky+=dy/l*320}
  ev(4,p.id,p.x|0,p.y|0);
  if(p.hp<=0){p.hp=0;p.down=true;p.rev=0;p.dashT=0;ev(5,p.id,p.x|0,p.y|0)}
 }
-function firePlayer(p){
- const s=p.s,n=s.multi;const spread=n>1?Math.min(0.16,0.5/n):0;
- for(let i=0;i<n;i++){
-  const a=p.ang+(i-(n-1)/2)*spread+rand(-0.025,0.025);
-  G.bullets.push({x:p.x+Math.cos(a)*24,y:p.y+Math.sin(a)*24,vx:Math.cos(a)*s.bspd,vy:Math.sin(a)*s.bspd,r:s.bsize,dmg:s.dmg*Math.max(1,s.rate/RCAP),pierce:s.pierce,bounce:s.bounce,owner:p.id,ci:p.ci,life:1.3,hits:[]});
- }
- ev(2,p.id);
+function firePlayer(p,count){
+ const s=p.s;const nb=G.bullets.length;
+ const ve=Math.min(count,nb<BCAP?VPT:1);const w=count/ve; // volleys emitted this tick, each carries w shots
+ const vis=Math.min(s.multi,nb<BCAP*1.3?MVIS:3);const mw=s.multi/vis; // visible projectiles per volley
+ const fan=Math.min(1.1,0.16*(Math.min(s.multi,MVIS)-1)+0.02*Math.max(0,s.multi-MVIS));const spread=vis>1?fan/(vis-1):0;
+ const jit=0.025+Math.min(0.05,0.004*Math.log2(1+s.rate/60));
+ const dm=s.dmg*w*mw*(s.bdm||1),heavy=w*mw;const BV=s.bv||s.bspd,BR=s.br||s.bsize;
+ for(let j=0;j<ve;j++){const fwd=24+BV*STEP*(1-j/ve);
+  for(let i=0;i<vis;i++){
+   const a=p.ang+(i-(vis-1)/2)*spread+rand(-jit,jit);
+   G.bullets.push({x:p.x+Math.cos(a)*fwd,y:p.y+Math.sin(a)*fwd,vx:Math.cos(a)*BV,vy:Math.sin(a)*BV,r:BR,dmg:dm,hv:heavy,tl:0,pierce:s.pierce,bounce:s.bounce,bx:0,owner:p.id,ci:p.ci,life:1.3,hits:[],id:G.bid=(G.bid|0)+1});
+  }}
+ if(!(p.sndT>0)){p.sndT=0.05;ev(2,p.id)}
 }
 function killEnemy(e,owner){
  const d=ET[e.ty];e.dead=true;
@@ -370,12 +398,12 @@ function rollChoices(p){
  const keys=availUps(p);
  const out=[];while(out.length<3&&keys.length){out.push(keys.splice(Math.random()*keys.length|0,1)[0])}if(!out.length)out.push('boost');return out;
 }
-function availUps(p){const k=Object.keys(UPG).filter(k=>(p.ups[k]||0)<UPG[k].max&&!(k==='medic'&&G.players.size<2)&&(!UPG[k].can||UPG[k].can(p.s,p)));return k.length?k:['boost']}
-function offerFor(p){return p.pickAny?availUps(p):rollChoices(p)
+function availUps(p,all){const k=Object.keys(UPG).filter(k=>all||!(k==='medic'&&G.players.size<2));return k.length?k:['boost']}
+function offerFor(p){return p.pickAny?availUps(p,1):rollChoices(p)
 }
 function applyPick(p,i){
  if(!p||p.picked||!p.choices)return;const k=p.choices[i|0];if(!k||!UPG[k])return;
- UPG[k].ap(p.s,p);p.ups[k]=(p.ups[k]||0)+1;p.picked=true;p.hp=Math.min(p.hp,p.s.maxhp);ev(13,p.id);
+ addUp(p,k,1);p.picked=true;ev(13,p.id);
 }
 function waveCleared(){
  G.cleared=(G.cleared|0)+1;G.score+=50*G.wave;ev(12,G.wave);
@@ -434,15 +462,15 @@ function updatePlayers(dt){
   p.ang=+I.a||0;
   if(I.d!==p.lastD){p.lastD=I.d;if(p.dashCd<=0){p.dashT=0.17;p.dashCd=s.dashcd;if(ml>0.1){p.ddx=mx/ml;p.ddy=my/ml}else{p.ddx=Math.cos(p.ang);p.ddy=Math.sin(p.ang)}ev(11,p.id,p.x|0,p.y|0)}}
   let vx,vy;
-  if(p.dashT>0){p.dashT-=dt;vx=p.ddx*s.spd*3.3;vy=p.ddy*s.spd*3.3}else{vx=mx*s.spd;vy=my*s.spd}
+  if(p.dashT>0){p.dashT-=dt;vx=p.ddx*(s.mv||s.spd)*3.3;vy=p.ddy*(s.mv||s.spd)*3.3}else{vx=mx*(s.mv||s.spd);vy=my*(s.mv||s.spd)}
   p.x=clamp(p.x+(vx+p.kx)*dt,PR,AW-PR);p.y=clamp(p.y+(vy+p.ky)*dt,PR,AH-PR);
-  if(I.f&&p.fireCd<=0&&G.phase==='play'){firePlayer(p);p.fireCd=Math.max(p.fireCd,-STEP)+1/Math.min(s.rate,RCAP)}
+  p.sndT=(p.sndT||0)-dt;p.firing=0;if(I.f&&p.fireCd<=0&&G.phase==='play'){const fc=Math.max(p.fireCd,-STEP);const cnt=Math.min(1e7,Math.floor(-fc*s.rate)+1);p.fireCd=fc+cnt/s.rate;firePlayer(p,cnt);p.firing=1}else if(I.f&&G.phase==='play')p.firing=1
   if(p.fireCd<0&&!I.f)p.fireCd=0;
   p.orbA+=dt*2.4;
   if(s.orbit>0&&G.phase==='play'){p.orbCd-=dt;if(p.orbCd<=0){p.orbCd=0.7;
-   for(let i=0;i<s.orbit;i++){const a=p.orbA+i*TAU/s.orbit;const ox=p.x+Math.cos(a)*44,oy=p.y+Math.sin(a)*44;
+   const ov=Math.min(s.orbit,OVIS),ow=s.orbit/ov;for(let i=0;i<ov;i++){const a=p.orbA+i*TAU/ov;const ox=p.x+Math.cos(a)*44,oy=p.y+Math.sin(a)*44;
     let best=null,bd=380*380;for(const e of G.enemies){if(e.sp>0)continue;const d=(e.x-ox)**2+(e.y-oy)**2;if(d<bd){bd=d;best=e}}
-    if(best){const aa=Math.atan2(best.y-oy,best.x-ox);G.bullets.push({x:ox,y:oy,vx:Math.cos(aa)*650,vy:Math.sin(aa)*650,r:4,dmg:s.dmg*0.6,pierce:0,bounce:0,owner:p.id,ci:p.ci,life:0.9,hits:[]})}
+    if(best){const aa=Math.atan2(best.y-oy,best.x-ox);G.bullets.push({x:ox,y:oy,vx:Math.cos(aa)*650,vy:Math.sin(aa)*650,r:4,dmg:s.dmg*0.6*ow,hv:1,pierce:0,bounce:0,owner:p.id,ci:p.ci,life:0.9,hits:[],id:G.bid=(G.bid|0)+1})}
    }}}
  }
 }
@@ -495,16 +523,16 @@ function updateEnemies(dt){
 function updateBullets(dt){
  const B=G.bullets;const GRD=enemyGrid(G.enemies);
  for(const b of B){
-  b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
-  if(b.x<0||b.x>AW){if(b.bounce>0){b.bounce--;b.vx*=-1;b.x=clamp(b.x,0,AW);b.hits.length=0;b.life=Math.max(b.life,0.6)}else b.life=0}
-  if(b.y<0||b.y>AH){if(b.bounce>0){b.bounce--;b.vy*=-1;b.y=clamp(b.y,0,AH);b.hits.length=0;b.life=Math.max(b.life,0.6)}else b.life=0}
+  b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;b.tl=(b.tl||0)+dt;
+  if(b.x<0||b.x>AW){if(b.bounce>0){b.bounce--;b.vx*=-1;b.x=clamp(b.x,0,AW);b.hits.length=0;if((b.tl||0)<6)b.life=Math.max(b.life,0.6)}else b.life=0}
+  if(b.y<0||b.y>AH){if(b.bounce>0){b.bounce--;b.vy*=-1;b.y=clamp(b.y,0,AH);b.hits.length=0;if((b.tl||0)<6)b.life=Math.max(b.life,0.6)}else b.life=0}
   if(b.life<=0)continue;
   const bx=(b.x/GC)|0,by=(b.y/GC)|0;let stop=false;
   for(let gx=bx-1;gx<=bx+1&&!stop;gx++)for(let gy=by-1;gy<=by+1&&!stop;gy++){const cell=GRD.get(gx*4096+gy);if(!cell)continue;
   for(const e of cell){
    if(e.sp>0||e.dead)continue;const rr=e.r+b.r;
    if((b.x-e.x)**2+(b.y-e.y)**2<rr*rr&&!b.hits.includes(e.id)){
-    const owner=G.players.get(b.owner);const crit=owner&&Math.random()<owner.s.crit;const dmg=b.dmg*(crit?(owner.s.critm||2):1);
+    const owner=G.players.get(b.owner);let cl=0;if(owner){const c=owner.s.crit;cl=Math.floor(c)+(Math.random()<c-Math.floor(c)?1:0)}const crit=cl>0;const dmg=b.dmg*(crit?1+((owner.s.critm||2)-1)*cl:1);
     e.hp-=dmg;e.flash=0.07;const kb=e.ty===7?0.004:(0.05*16/e.r);e.kx+=b.vx*kb;e.ky+=b.vy*kb;
     ev(1,b.x|0,b.y|0,Math.round(dmg),crit?1:0);
     if(e.hp<=0)killEnemy(e,b.owner);
@@ -537,9 +565,9 @@ function updatePickups(dt){
  G.pickups=G.pickups.filter(k=>k.life>0);
 }
 function makeSnap(){
- const p=[];for(const q of G.players.values())p.push([q.id,q.x|0,q.y|0,+q.ang.toFixed(2),Math.ceil(q.hp),q.s.maxhp,q.down?1:0,(q.rev*100)|0,q.inv>0?1:0,q.dashT>0?1:0,q.picked?1:0,q.s.orbit,+(q.orbA%TAU).toFixed(2),Math.round(q.dashCd/q.s.dashcd*100),Math.round(q.s.spd),q.kills,q.ci,plName(q),+q.s.dashcd.toFixed(2),upCount(q),q.cu?q.cu.left:0,q.banked|0,q.bankOn?1:0]);
+ const p=[];for(const q of G.players.values())p.push([q.id,q.x|0,q.y|0,+q.ang.toFixed(2),Math.ceil(q.hp),q.s.maxhp,q.down?1:0,(q.rev*100)|0,q.inv>0?1:0,q.dashT>0?1:0,q.picked?1:0,Math.min(q.s.orbit,OVIS),+(q.orbA%TAU).toFixed(2),Math.round(q.dashCd/q.s.dashcd*100),Math.round(q.s.mv||q.s.spd),q.kills,q.ci,plName(q),+q.s.dashcd.toFixed(2),upCount(q),q.cu?q.cu.left:0,q.banked|0,q.bankOn?1:0,q.firing?Math.round(q.s.rate):0,Math.round(q.s.bv||q.s.bspd),Math.min(q.s.multi,MVIS)]);
  const e=G.enemies.map(e=>[e.id,e.ty,e.x|0,e.y|0,Math.max(0,Math.ceil(e.hp/e.mhp*100)),e.flash>0?1:0,e.sp>0?1:0,e.st===1?1:0,+(e.rot%TAU).toFixed(2),+e.ang.toFixed(2)]);
- const b=[];for(const q of G.bullets)b.push(q.x|0,q.y|0,q.vx|0,q.vy|0,q.ci,Math.round(q.r));
+ const b=[];const BL=G.bullets,kk=Math.ceil(BL.length/SNB);for(const q of BL){if(kk>1&&(q.id|0)%kk)continue;const hv=q.hv||1;b.push(q.x|0,q.y|0,q.vx|0,q.vy|0,q.ci,Math.round(Math.min(Math.max(q.r,4)*(1+0.12*Math.log2(hv*kk)),q.r+12)))}
  const eb=[];for(const q of G.ebullets)eb.push(q.x|0,q.y|0,q.vx|0,q.vy|0);
  const k=G.pickups.map(q=>[q.id,q.ty,q.x|0,q.y|0,q.life<3?1:0]);
  return {t:'s',ph:G.phase,w:G.wave,sc:G.score,left:G.queue.length+G.enemies.length,pt:Math.ceil(G.pt),p,e,b,eb,k,cl:G.cleared|0,ch:G.cheat|0,an:G.autoNext?1:0,aa:G.allAtOnce?1:0,bh:G.boss&&G.boss.sp<=0?+Math.max(0,G.boss.hp/G.boss.mhp).toFixed(3):-1};
@@ -756,13 +784,13 @@ function pInfo(pid){const v=view();if(v)for(const p of v.p)if(p[0]===pid)return 
 function pName(pid){const p=pInfo(pid);return p?p[17]:'Pilot'}
 function pCol(pid){const p=pInfo(pid);return p?COLORS[p[16]]:'#fff'}
 function handleEvents(evs){
- const mp=myPos();
+ const mp=myPos();let h1=0,h2=0;
  for(const e of evs){
   switch(e[0]){
    case 0:{const sz=e[4];burst(e[1],e[2],e[3],sz>2?90:(sz>=1?34:18),sz>2?420:240,sz>2?1.2:0.6,sz>2?6:4);burst(e[1],e[2],'#fff',sz>2?30:6,150,0.3,3);
     Snd.play('boom',sz);if(hyp(e[1]-mp.x,e[2]-mp.y)<700)addShake(sz>2?22:(sz>=1?6:2.5));break}
-   case 1:{burst(e[1],e[2],'#fff',3,160,0.2,2.5);floatText(e[1]+rand(-6,6),e[2]-8,String(e[3]),e[4]?'#ffcc33':'#e8f0ff',e[4]?18:12);Snd.play('hit');break}
-   case 2:Snd.play('shoot',e[1]===NET.myId);break;
+   case 1:{if(++h1>40)break;burst(e[1],e[2],'#fff',3,160,0.2,2.5);floatText(e[1]+rand(-6,6),e[2]-8,String(e[3]),e[4]?'#ffcc33':'#e8f0ff',e[4]?18:12);Snd.play('hit');break}
+   case 2:if(++h2>6)break;Snd.play('shoot',e[1]===NET.myId);break;
    case 3:{if(e[3]===1){burst(e[1],e[2],'#ff5f7a',12,120,0.5,4);floatText(e[1],e[2]-10,'+25','#ff8fa3',16);if(e[4]===NET.myId)Snd.play('heart')}else{burst(e[1],e[2],'#ffe27a',5,90,0.35,3);Snd.play('star')}break}
    case 4:{burst(e[2],e[3],pCol(e[1]),10,180,0.4,4);if(e[1]===NET.myId){addShake(9);hurtFlash=0.35}Snd.play('hurt',e[1]===NET.myId);break}
    case 5:{burst(e[2],e[3],'#ffffff',30,260,0.8,4);Snd.play('down');addShake(e[1]===NET.myId?14:5);
@@ -842,6 +870,13 @@ function render(dt,t){
  cx.globalCompositeOperation='source-over';
  cx.fillStyle='#fff';cx.beginPath();
  for(let i=0;i<b.length;i+=6){const x=b[i]+b[i+2]*age,y=b[i+1]+b[i+3]*age,r=b[i+5]*0.55;cx.moveTo(x+r,y);cx.arc(x,y,r,0,TAU)}cx.fill();}
+ if(!modDucks()){cx.globalCompositeOperation='lighter';cx.lineCap='round';
+  for(const p of v.p){const rt=p[23]|0;if(rt<40||p[6])continue;let o;if(p[0]===NET.myId){const q=myPos();o={x:q.x,y:q.y,a:IN.a}}else o=dpos('p'+p[0],p[1],p[2],p[3]);
+   const bs=p[24]||720,nv=p[25]||1,len=Math.min(bs*0.42,340),fan=Math.min(1.1,0.16*(nv-1)),sp=nv>1?fan/(nv-1):0,dens=Math.min(1,Math.log2(rt/40+1)/5);
+   cx.strokeStyle=COLORS[p[16]]||'#fff';cx.globalAlpha=0.25+0.45*dens;cx.lineWidth=3+5*dens;cx.setLineDash([10,Math.max(2,26-24*dens)]);cx.lineDashOffset=-(t*bs)%1000;
+   cx.beginPath();for(let i=0;i<nv;i++){const a=o.a+(i-(nv-1)/2)*sp;const c=Math.cos(a),s=Math.sin(a);cx.moveTo(o.x+c*26,o.y+s*26);cx.lineTo(o.x+c*(26+len),o.y+s*(26+len))}cx.stroke();
+  }
+  cx.setLineDash([]);cx.globalAlpha=1;cx.globalCompositeOperation='source-over'}
  for(const p of v.p){let o;if(p[0]===NET.myId){const q=myPos();o={x:q.x,y:q.y,a:IN.a}}else o=dpos('p'+p[0],p[1],p[2],p[3]);const ms=p[0]===NET.myId?modShipScale():1;if(ms!==1){cx.save();cx.translate(o.x,o.y);cx.scale(ms,ms);cx.translate(-o.x,-o.y);drawPlayer(p,o,t);cx.restore()}else drawPlayer(p,o,t)}
  cx.globalCompositeOperation='lighter';
  for(const q of parts){cx.globalAlpha=Math.max(0,q.life/q.max);cx.fillStyle=q.col;cx.fillRect(q.x-q.size/2,q.y-q.size/2,q.size,q.size)}
@@ -973,7 +1008,7 @@ function cuStart(p,n){if(!p||!G||G.phase==='lobby'||G.phase==='over'||n<=0)retur
 function cuSend(p){const c=p.cu;hostSendTo(p.id,c?{t:'cu',c:c.choices,left:c.left,ups:p.ups}:{t:'cu',done:1})}
 function cuNext(p){const c=p.cu;if(!c)return;if(c.left<=0){p.cu=null;hostSendTo(p.id,{t:'cu',done:1,n:c.total});return}
  const ch=offerFor(p);if(!ch.length){p.cu=null;hostSendTo(p.id,{t:'cu',done:1,n:c.total,max:1});return}c.choices=ch;c.t=0;cuSend(p)}
-function cuApply(p,k){if(!UPG[k])return;UPG[k].ap(p.s,p);p.ups[k]=(p.ups[k]||0)+1;p.hp=Math.min(p.hp,p.s.maxhp);ev(13,p.id)}
+function cuApply(p,k){if(!UPG[k])return;addUp(p,k,1);ev(13,p.id)}
 function cuPick(p,i){const c=p&&p.cu;if(!c||!c.choices)return;
  if(i===-1){while(c.left>0){const ch=rollChoices(p);if(!ch.length)break;cuApply(p,mPick(ch));c.left--}c.left=0;cuNext(p);return}
  const k=c.choices[i|0];if(!k)return;cuApply(p,k);c.left--;c.choices=null;cuNext(p)}
@@ -1008,7 +1043,8 @@ function modHost(p,d){ // p = sender player object
  else if(d.a==='plus1'&&host){const tp=G.players.get(d.to);if(tp&&cuStart(tp,1))hostSendTo(pid,{t:'mk',msg:'➕ Gave '+tp.name+' +1 upgrade'});else hostSendTo(pid,{t:'mk',msg:'Not during the lobby / game over'})}
  else if(d.a==='prefs'){p.bankOn=!!d.bank;p.pickAny=!!d.any}
  else if(d.a==='cash'){const n=p.banked|0;if(n>0&&cuStart(p,n)){p.banked=0;hostSendTo(pid,{t:'mk',msg:'🏦 Cashing in '+n+' upgrade'+(n>1?'s':'')})}}
- else if(d.a==='stats'){hostSendTo(pid,{t:'mst',ups:p.ups,s:p.s,banked:p.banked|0})}
+ else if(d.a==='sell'){const k=d.k;const have=p.ups[k]|0;if(UPG[k]&&have>0&&G.phase!=='lobby'){const n=d.all?have:1;addUp(p,k,-n);p.banked=(p.banked|0)+n;hostSendTo(pid,{t:'mk',msg:'💸 Sold '+n+'× '+UPG[k].name+' → +'+n+' token'+(n>1?'s':'')});hostSendTo(pid,{t:'mst',ups:Object.assign({},p.ups),s:Object.assign({},p.s),banked:p.banked|0})}}
+ else if(d.a==='stats'){hostSendTo(pid,{t:'mst',ups:Object.assign({},p.ups),s:Object.assign({},p.s),banked:p.banked|0})}
  else if(d.a==='autonext'&&host){G.autoNext=!!d.v;STORE.set('mautonext',G.autoNext)}
  else if(d.a==='allatonce'&&host){G.allAtOnce=!!d.v;STORE.set('mallatonce',G.allAtOnce)}
  else if(d.a==='autocu'&&host){MODL.autoCU=!!d.v;STORE.set('mautocu',MODL.autoCU)}
@@ -1171,6 +1207,7 @@ mml.addEventListener('click',e=>{
  if(d.mt){MODL.tab=d.mt;MODL.status=''}
  else if(d.to)MODL.to=d.to;
  else if(d.p){if(!mHas(MTRP,d.p))return;if((MODL.cd[d.p]||0)>mNow()){Snd.play('click');return}MODL.status='Sending…';modAct({a:'tr',p:d.p,to:MODL.to,rv:MODL.rv})}
+ else if(d.sell){modAct({a:'sell',k:d.sell,all:e.shiftKey||'all' in d?1:0});if(MODL.st&&MODL.st.ups[d.sell]){const n=e.shiftKey||'all' in d?MODL.st.ups[d.sell]:1;MODL.st.ups[d.sell]-=n;MODL.dirty=true}}
  else if(d.cuto){MODL.status='Sending…';modAct({a:'cu',to:d.cuto})}
  else if(d.p1){modAct({a:'plus1',to:d.p1})}
  else if('autocu' in d){MODL.autoCU=!MODL.autoCU;STORE.set('mautocu',MODL.autoCU)}
@@ -1223,7 +1260,7 @@ addEventListener('mousedown',e=>{if(!IN.touch)mTap(e.clientX,e.clientY)},true);
 .cards.many{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:7px}.cards.many .card{width:auto;min-height:0;padding:8px 6px}.cards.many .ic{font-size:26px}.cards.many .nm{font-size:13px}.cards.many .ds{font-size:10.5px}
 #mml .mcash{display:flex;align-items:center;gap:10px;background:#8dff4a14;border:1px solid #8dff4a55;border-radius:12px;padding:8px 10px;margin-bottom:8px}#mml .mcash>div{flex:1}#mml .mcash .big{width:auto;margin:0;padding:8px 14px}#mml .mcash .big[disabled]{opacity:.4}
 #mml .mset2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}#mml .mset2 .mtog{margin:0}#mml .mtog small{display:block;font-size:10.5px;opacity:.6;font-weight:400;margin-top:2px}
-#mml .mupl{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:5px;margin-bottom:8px}#mml .mupl div{display:flex;align-items:center;gap:6px;background:#ffffff0a;border-radius:8px;padding:4px 8px;font-size:12.5px}#mml .mupl span{font-size:18px}#mml .mupl b{flex:1}#mml .mupl i{font-style:normal;color:#ffcc33;font-weight:900}#mml .mupl small{opacity:.5;font-size:10px}
+#mml .mupl{display:grid;grid-template-columns:repeat(auto-fill,minmax(235px,1fr));gap:5px;margin-bottom:8px}#mml .mupl div{display:flex;align-items:center;gap:6px;background:#ffffff0a;border-radius:8px;padding:4px 8px;font-size:12.5px}#mml .mupl span{font-size:18px}#mml .mupl b{flex:1}#mml .mupl i{font-style:normal;color:#ffcc33;font-weight:900}#mml .mupl small{opacity:.5;font-size:10px}#mml .mupl .msell{padding:2px 6px;font-size:10.5px;border-radius:6px;background:#ff5d8f33;border:1px solid #ff5d8f66;color:#fff;cursor:pointer;min-height:0}#mml .mupl .msell:hover{background:#ff5d8f77}
 #mml .mstat{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:3px 10px;font-size:12.5px}#mml .mstat div{display:flex;justify-content:space-between;border-bottom:1px solid #ffffff12;padding:2px 0}#mml .mstat span{opacity:.7}
 @media (max-width:520px){#mml .mset2{grid-template-columns:1fr}}
 .mscr{position:fixed;inset:0;z-index:35;display:flex;align-items:center;justify-content:center;padding:14px;background:radial-gradient(ellipse at center,rgba(7,11,31,.8),rgba(7,11,31,.96))}
@@ -1236,7 +1273,7 @@ body.m-spin #c{animation:mspin 12s linear}
 @keyframes mspin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 body.m-big #c{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Ccircle cx='48' cy='48' r='30' fill='none' stroke='%23ff4d8d' stroke-width='6'/%3E%3Cpath d='M48 4v28M48 64v28M4 48h28M64 48h28' stroke='%23ff4d8d' stroke-width='6'/%3E%3C/svg%3E") 48 48,crosshair!important}
 `;document.head.appendChild(st)}
-const STATL=[['dmg','Damage',x=>x.toFixed(x<100?1:0)],['rate','Fire rate',x=>x.toFixed(1)+'/s'],['multi','Projectiles',x=>x],['maxhp','Max HP',x=>Math.round(x)],['spd','Speed',x=>Math.round(x)],['crit','Crit chance',x=>Math.round(x*100)+'%'],['critm','Crit damage',x=>'x'+x.toFixed(2)],['armor','Damage taken',x=>Math.round(x*100)+'%'],['regen','Regen',x=>x.toFixed(1)+' HP/s'],['vamp','HP per takedown',x=>x.toFixed(1)],['pierce','Pierce',x=>x],['bounce','Ricochets',x=>x],['dashcd','Dash cooldown',x=>x.toFixed(2)+'s'],['orbit','Orbit drones',x=>x],['magnet','Pickup range',x=>Math.round(x)],['revive','Revive speed',x=>'x'+x],['bsize','Bullet size',x=>x.toFixed(1)]];
+const STATL=[['dmg','Damage',x=>x<1e6?x.toFixed(x<100?1:0):x.toExponential(2)],['rate','Fire rate',x=>(x<1000?x.toFixed(1):Math.round(x).toLocaleString())+' shots/s'],['multi','Projectiles',x=>x],['maxhp','Max HP',x=>Math.round(x)],['spd','Speed',x=>x<1e6?Math.round(x):x.toExponential(2)],['dodge','Dodge chance',x=>(x*100).toFixed(1)+'%'],['crit','Crit chance',x=>Math.round(x*100)+'%'],['critm','Crit damage',x=>'x'+x.toFixed(2)],['armor','Damage taken',x=>Math.round(x*100)+'%'],['regen','Regen',x=>x.toFixed(1)+' HP/s'],['vamp','HP per takedown',x=>x.toFixed(1)],['pierce','Pierce',x=>x],['bounce','Ricochets',x=>x],['dashcd','Dash cooldown',x=>(x<0.001?x.toExponential(1):x.toFixed(x<0.01?4:2))+'s'],['orbit','Orbit drones',x=>x],['magnet','Pickup range',x=>Math.round(x)],['revive','Revive speed',x=>'x'+(x<1e6?x:x.toExponential(2))],['bsize','Bullet size',x=>x<1e5?x.toFixed(1):x.toExponential(2)],['bdm','Mega damage bonus',x=>'x'+(x<1e5?x.toFixed(2):x.toExponential(2))]];
 function mUpTab(v,list){
  const me0=v.p.find(q=>q[0]===NET.myId);const banked=me0?me0[21]|0:0;const st=MODL.st;
  let h='<div class="mcash"><div><b>🏦 Banked upgrades: '+banked+'</b><div class="mfine muted">Earned upgrade points you saved for later. Hotkey: <b>U</b></div></div><button class="big" data-ut="cash"'+(banked?'':' disabled')+'>Cash in '+banked+'</button></div>';
@@ -1247,9 +1284,9 @@ function mUpTab(v,list){
  h+='</div>';
  if(!st){h+='<div class="muted mfine">Loading your upgrades…</div>';return h}
  const ks=Object.keys(st.ups).filter(k=>st.ups[k]>0&&UPG[k]).sort((a,b)=>st.ups[b]-st.ups[a]);let tot=0;for(const k of ks)tot+=st.ups[k];
- h+='<div class="mlab">MY UPGRADES ('+tot+')</div><div class="mupl">'+(ks.length?ks.map(k=>{const u=UPG[k];const mx=u.max===Infinity?'∞':u.max;return '<div><span>'+u.ic+'</span><b>'+mEsc(u.name)+'</b><i>×'+st.ups[k]+'</i><small>max '+mx+'</small></div>'}).join(''):'<div class="muted">None yet — clear a wave!</div>')+'</div>';
- const s=st.s;const effR=Math.min(s.rate,RCAP),od=Math.max(1,s.rate/RCAP);
- h+='<div class="mlab">MY STATS</div><div class="mstat">'+STATL.map(([k,n,f])=>{let val=f(+s[k]||0);if(k==='rate')val=effR.toFixed(1)+'/s'+(od>1?' (+'+Math.round((od-1)*100)+'% dmg overflow)':'');if(k==='dmg'&&od>1)val=f(s.dmg)+' ×'+od.toFixed(2);return '<div><span>'+n+'</span><b>'+val+'</b></div>'}).join('')+'</div>';
+ h+='<div class="mlab">MY UPGRADES ('+tot+') <span class="muted" style="text-transform:none;font-weight:600">· Sell = +1 token (shift-click or All = whole stack). Spend tokens with Cash in / U.</span></div><div class="mupl">'+(ks.length?ks.map(k=>{const u=UPG[k];const mx=u.max===Infinity?'∞':u.max;return '<div><span>'+u.ic+'</span><b>'+mEsc(u.name)+'</b><i>×'+st.ups[k]+'</i><small>max '+mx+'</small><button class="msell" data-sell="'+k+'" title="Sell 1 for 1 token (shift-click: sell all)">Sell</button><button class="msell" data-sell="'+k+'" data-all="1" title="Sell the whole stack">All</button></div>'}).join(''):'<div class="muted">None yet — clear a wave!</div>')+'</div>';
+ const s=st.s;
+ h+='<div class="mlab">MY STATS</div><div class="mstat">'+STATL.map(([k,n,f])=>{let val=f(+s[k]||0);return '<div><span>'+n+'</span><b>'+val+'</b></div>'}).join('')+'</div>';
  return h}
 window.__mod={MODL,MTRP,MDUR,modRecv,modOpen,mOn,owedUps,cuStart,upCount};
 
@@ -1364,7 +1401,7 @@ function frame(now){
   if((NET.mode==='solo'||NET.mode==='host')&&G){
    const p=G.players.get(NET.myId);if(p)p.inp={mx:IN.mx,my:IN.my,a:IN.a,f:IN.f,d:IN.d};
    if(!paused){acc+=dt;let n=0;while(acc>=STEP&&n<8){simTick(STEP);acc-=STEP;n++;tickN++;
-    const evs=G.events;G.events=[];if(evs.length){handleEvents(evs);if(NET.mode==='host')for(const e of evs)G.netEv.push(e)}
+    const evs=G.events;G.events=[];if(evs.length){handleEvents(evs);if(NET.mode==='host')for(const e of evs){if((e[0]===1||e[0]===2)&&G.netEv.length>300)continue;G.netEv.push(e)}}
     if(NET.mode==='host'&&tickN%3===0)broadcast()}
     if(acc>STEP*8)acc=0}
    G._view=makeSnap();
@@ -1380,7 +1417,7 @@ requestAnimationFrame(frame);
 let hidT=0;
 setInterval(()=>{const now=performance.now();if(!(document.hidden&&NET.mode==='host'&&G)){hidT=now;return}
  let n=Math.min(60,Math.round((now-hidT)/1000/STEP));hidT=now;acc=0;
- for(let i=0;i<n;i++){simTick(STEP);tickN++;const evs=G.events;G.events=[];for(const e of evs)G.netEv.push(e)}if(n)broadcast()},100);
+ for(let i=0;i<n;i++){simTick(STEP);tickN++;const evs=G.events;G.events=[];for(const e of evs){if((e[0]===1||e[0]===2)&&G.netEv.length>300)continue;G.netEv.push(e)}}if(n)broadcast()},100);
 window.__ssq={cam,dims:()=>({W,H,SC,DPR,cw:cv.width,iw:innerWidth}),get G(){return G},NET,IN,CL,get CV(){return CV},startWave:n=>startWave(n),view,KEYS,simTick,waveCleared,rollChoices,applyPick,UPG};
 </script>
 </body>
