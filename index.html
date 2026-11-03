@@ -201,22 +201,26 @@ const ET=[
  {n:'boss',r:66,hp:950,spd:55,dmg:28,col:'#ff3cac',score:500,sides:8,spin:0.4},
 ];
 const UPG={
- dmg:{name:'Power Core',desc:'+25% damage',ic:'\u{1F4A5}',max:99,ap:s=>s.dmg*=1.25},
- rate:{name:'Rapid Fire',desc:'+20% fire rate',ic:'\u26A1',max:99,ap:s=>s.rate*=1.2},
+ dmg:{name:'Power Core',desc:'+25% damage',ic:'\u{1F4A5}',max:Infinity,ap:s=>s.dmg*=1.25},
+ rate:{name:'Rapid Fire',desc:'+20% fire rate (past 30 shots/s it turns into +damage)',ic:'\u26A1',max:Infinity,ap:s=>s.rate*=1.2},
  multi:{name:'Split Shot',desc:'+1 projectile per shot',ic:'\u{1F531}',max:5,ap:s=>s.multi++},
- speed:{name:'Thrusters',desc:'+12% move speed',ic:'\u{1F680}',max:5,ap:s=>s.spd*=1.12},
- hp:{name:'Hull Plating',desc:'+30 max HP and full heal',ic:'\u{1F6E1}\uFE0F',max:99,ap:(s,p)=>{s.maxhp+=30;p.hp=s.maxhp}},
+ speed:{name:'Thrusters',desc:'+12% move speed (+3% after 5)',ic:'\u{1F680}',max:Infinity,can:s=>s.spd<559,ap:(s,p)=>{s.spd=Math.min(560,s.spd*((p.ups.speed||0)<5?1.12:1.03))}},
+ hp:{name:'Hull Plating',desc:'+10% (+30) max HP and full heal',ic:'\u{1F6E1}\uFE0F',max:Infinity,ap:(s,p)=>{s.maxhp=Math.round(s.maxhp*1.1+30);p.hp=s.maxhp}},
  pierce:{name:'Piercing Rounds',desc:'Shots pass through +1 enemy',ic:'\u{1F3AF}',max:4,ap:s=>s.pierce++},
  bounce:{name:'Ricochet',desc:'Shots bounce off walls',ic:'\u{1F501}',max:3,ap:s=>s.bounce++},
- crit:{name:'Lucky Star',desc:'+10% chance for double damage',ic:'\u2B50',max:6,ap:s=>s.crit+=0.1},
- regen:{name:'Nanobots',desc:'Regenerate 2 HP per second',ic:'\u{1F49A}',max:5,ap:s=>s.regen+=2},
+ crit:{name:'Lucky Star',desc:'+10% crit chance; at 100%: +25% crit damage',ic:'\u2B50',max:Infinity,ap:s=>{if(s.crit<0.95)s.crit=Math.min(1,s.crit+0.1);else s.critm+=0.25}},
+ regen:{name:'Nanobots',desc:'Regenerate +2 HP/s (or +1% max HP/s)',ic:'\u{1F49A}',max:Infinity,ap:s=>s.regen+=Math.max(2,s.maxhp*0.01)},
  dash:{name:'Blink Drive',desc:'Dash recharges 30% faster',ic:'\u{1F4A8}',max:4,ap:s=>s.dashcd*=0.7},
  orbit:{name:'Orbit Drone',desc:'A drone circles you and zaps foes',ic:'\u{1F6F0}\uFE0F',max:4,ap:s=>s.orbit++},
  magnet:{name:'Tractor Beam',desc:'Grab pickups from much farther',ic:'\u{1F9F2}',max:3,ap:s=>s.magnet+=110},
- vamp:{name:'Star Siphon',desc:'Heal 3 HP for every takedown',ic:'\u2728',max:4,ap:s=>s.vamp+=3},
+ vamp:{name:'Star Siphon',desc:'Heal +3 HP (or +0.5% max HP) per takedown',ic:'\u2728',max:Infinity,ap:s=>s.vamp+=Math.max(3,s.maxhp*0.005)},
+ armor:{name:'Deflector',desc:'Take 8% less damage',ic:'\u{1F6E1}\uFE0F',max:Infinity,can:s=>s.armor>0.26,ap:s=>s.armor*=0.92},
+ boost:{name:'Star Power',desc:'+10% damage, +10% max HP, +3% fire rate',ic:'\u{1F31F}',max:Infinity,ap:(s,p)=>{s.dmg*=1.1;s.maxhp=Math.round(s.maxhp*1.1);s.rate*=1.03;p.hp=Math.min(s.maxhp,p.hp+s.maxhp*0.1)}},
  medic:{name:'Medic Kit',desc:'Revive teammates 2x faster',ic:'\u2795',max:2,ap:s=>s.revive*=2},
  big:{name:'Mega Bullets',desc:'Bigger, faster shots',ic:'\u{1F535}',max:3,ap:s=>{s.bsize*=1.35;s.bspd*=1.15}},
 };
+const WCAP=240; // max enemies on the field in whole-wave-at-once mode (extra enemies fold into tougher ones)
+const RCAP=30; // max real shots per second; extra fire rate becomes damage
 const PREFIX='starlightsquad-v1-';
 const CODE_CHARS='ABCDEFGHJKLMNPQRSTUVWXYZ';
 
@@ -286,16 +290,16 @@ let paused=false;
 const me={name:STORE.get('name','')?cleanName(STORE.get('name','')):'',ci:STORE.get('color',0)%6};
 
 function newGame(){return {phase:'lobby',wave:0,score:0,t:0,pt:0,players:new Map(),enemies:[],bullets:[],ebullets:[],pickups:[],queue:[],spawnT:0,spawnRate:1,nid:1,events:[],netEv:[],boss:null}}
-function baseStats(){return {maxhp:100,spd:250,dmg:10,rate:5,multi:1,pierce:0,bounce:0,crit:0.05,regen:0,dashcd:2.2,orbit:0,magnet:90,vamp:0,revive:1,bsize:5,bspd:720}}
+function baseStats(){return {maxhp:100,spd:250,dmg:10,rate:5,multi:1,pierce:0,bounce:0,crit:0.05,regen:0,critm:2,armor:1,dashcd:2.2,orbit:0,magnet:90,vamp:0,revive:1,bsize:5,bspd:720}}
 function newPlayer(id,name,ci){const p={id,name:cleanName(name),ci,x:AW/2,y:AH/2,ang:0,hp:100,down:false,rev:0,inv:1.5,fireCd:0,dashCd:0,dashT:0,ddx:0,ddy:0,kx:0,ky:0,s:baseStats(),inp:{mx:0,my:0,a:0,f:0,d:0},lastD:0,choices:null,picked:true,ups:{},orbA:0,orbCd:0,kills:0};placePlayer(p,G?G.players.size:0,MAXP);return p}
 function placePlayer(p,i,n){const a=i/Math.max(1,n)*TAU+0.6;p.x=AW/2+Math.cos(a)*(n>1?70:0);p.y=AH/2+Math.sin(a)*(n>1?70:0)}
-function resetPlayer(p,i,n){if(p.cu){p.cu=null;hostSendTo(p.id,{t:'cu',done:1})}p.nick=null;p.s=baseStats();p.hp=p.s.maxhp;p.down=false;p.rev=0;p.inv=2;p.fireCd=0;p.dashCd=0;p.dashT=0;p.kx=p.ky=0;p.ups={};p.choices=null;p.picked=true;p.kills=0;p.orbA=0;placePlayer(p,i,n)}
+function resetPlayer(p,i,n){p.banked=0;if(p.cu){p.cu=null;hostSendTo(p.id,{t:'cu',done:1})}p.nick=null;p.s=baseStats();p.hp=p.s.maxhp;p.down=false;p.rev=0;p.inv=2;p.fireCd=0;p.dashCd=0;p.dashT=0;p.kx=p.ky=0;p.ups={};p.choices=null;p.picked=true;p.kills=0;p.orbA=0;placePlayer(p,i,n)}
 function ev(...a){G.events.push(a)}
 function freeColor(want){const used=new Set([...G.players.values()].map(p=>p.ci));if(!used.has(want))return want;for(let i=0;i<COLORS.length;i++)if(!used.has(i))return i;return want}
 
 // ================= simulation (host / solo) =================
 function startGame(){
- Object.assign(G,{cleared:0,cheat:0,god:0,wave:0,score:0,enemies:[],bullets:[],ebullets:[],pickups:[],queue:[],boss:null,phase:'countdown',pt:3.2,t:0});
+ Object.assign(G,{cleared:0,cheat:0,god:0,autoNext:!!STORE.get('mautonext',false),allAtOnce:!!STORE.get('mallatonce',false),fold:1,wave:0,score:0,enemies:[],bullets:[],ebullets:[],pickups:[],queue:[],boss:null,phase:'countdown',pt:3.2,t:0});
  let i=0;const n=G.players.size;for(const p of G.players.values())resetPlayer(p,i++,n);
 }
 function weighted(pool){let tot=0;for(const q of pool)tot+=q[1];let r=Math.random()*tot;for(const q of pool){r-=q[1];if(r<=0)return q[0]}return pool[0][0]}
@@ -307,7 +311,8 @@ function startWave(n){
  const boss=n%5===0;
  if(boss){G.queue.push(7);budget=Math.round(budget*0.3)}
  for(let i=0;i<budget;i++)G.queue.push(weighted(pool));
- G.spawnT=boss?0.5:1.2;G.spawnRate=Math.max(0.3,1.25-n*0.06)/Math.sqrt(mult);
+ G.fold=1;if(G.allAtOnce){const nb=G.queue.filter(t=>t!==7);if(nb.length>WCAP){G.fold=nb.length/WCAP;G.queue=(boss?[7]:[]).concat(nb.slice(0,WCAP))}}
+ G.spawnT=G.allAtOnce?0:(boss?0.5:1.2);G.spawnRate=Math.max(0.3,1.25-n*0.06)/Math.sqrt(mult);
  G.ebullets=[];
  ev(7,n,boss?1:0);
 }
@@ -317,6 +322,7 @@ function spawnEnemy(ty,x,y,now){
  const d=ET[ty];const np=G.players.size;
  let hp=d.hp*(1+0.12*(G.wave-1))*(1+0.25*(np-1));
  if(ty===7)hp=d.hp*(1+0.8*(np-1))*(1+0.65*(Math.max(1,G.wave/5)-1));
+ const fm=(ty!==7&&ty!==6&&G.fold>1)?G.fold:1;hp*=fm;
  if(x===undefined){
   const al=alivePlayers();
   for(let tries=0;tries<30;tries++){
@@ -327,15 +333,17 @@ function spawnEnemy(ty,x,y,now){
    if(ok)break;
   }
  }
- const e={id:G.nid++,ty,x,y,vx:0,vy:0,kx:0,ky:0,hp,mhp:hp,r:d.r,spd:d.spd*(1+Math.min(0.35,0.02*G.wave))*rand(0.9,1.1),sp:now?0:(ty===7?2.2:0.9),flash:0,cd:rand(1,2.5),st:0,stT:0,rot:Math.random()*TAU,ang:0,wob:Math.random()*TAU,pat:0,burst:0,burstT:0,spiral:0,spT:0,dx:0,dy:0};
+ const e={id:G.nid++,ty,x,y,vx:0,vy:0,kx:0,ky:0,hp,mhp:hp,r:d.r,spd:d.spd*(1+Math.min(0.35,0.02*G.wave))*rand(0.9,1.1),sp:now?0:(ty===7?2.2:0.9),flash:0,cd:rand(1,2.5),st:0,stT:0,rot:Math.random()*TAU,ang:0,wob:Math.random()*TAU,pat:0,burst:0,burstT:0,spiral:0,spT:0,dx:0,dy:0,fm};
  G.enemies.push(e);
  if(ty===7){G.boss=e;e.cd=3;ev(8)}
  return e;
 }
+const GC=110;
+function enemyGrid(E){const g=new Map();for(const e of E){if(e.sp>0||e.dead)continue;const k=((e.x/GC)|0)*4096+((e.y/GC)|0);let a=g.get(k);if(!a)g.set(k,a=[]);a.push(e)}return g}
 function eShoot(x,y,a,spd,dmg){G.ebullets.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,r:7,life:6,dmg})}
 function damagePlayer(p,d,fx,fy){
  if(p.down||p.inv>0||p.dashT>0)return;
- p.hp-=d;p.inv=0.75;
+ p.hp-=d*(p.s.armor||1);p.inv=0.75;
  if(fx!==undefined){const dx=p.x-fx,dy=p.y-fy,l=hyp(dx,dy)||1;p.kx+=dx/l*320;p.ky+=dy/l*320}
  ev(4,p.id,p.x|0,p.y|0);
  if(p.hp<=0){p.hp=0;p.down=true;p.rev=0;p.dashT=0;ev(5,p.id,p.x|0,p.y|0)}
@@ -344,13 +352,13 @@ function firePlayer(p){
  const s=p.s,n=s.multi;const spread=n>1?Math.min(0.16,0.5/n):0;
  for(let i=0;i<n;i++){
   const a=p.ang+(i-(n-1)/2)*spread+rand(-0.025,0.025);
-  G.bullets.push({x:p.x+Math.cos(a)*24,y:p.y+Math.sin(a)*24,vx:Math.cos(a)*s.bspd,vy:Math.sin(a)*s.bspd,r:s.bsize,dmg:s.dmg,pierce:s.pierce,bounce:s.bounce,owner:p.id,ci:p.ci,life:1.3,hits:[]});
+  G.bullets.push({x:p.x+Math.cos(a)*24,y:p.y+Math.sin(a)*24,vx:Math.cos(a)*s.bspd,vy:Math.sin(a)*s.bspd,r:s.bsize,dmg:s.dmg*Math.max(1,s.rate/RCAP),pierce:s.pierce,bounce:s.bounce,owner:p.id,ci:p.ci,life:1.3,hits:[]});
  }
  ev(2,p.id);
 }
 function killEnemy(e,owner){
  const d=ET[e.ty];e.dead=true;
- G.score+=Math.round(d.score*(1+0.1*(G.wave-1)));
+ G.score+=Math.round(d.score*(1+0.1*(G.wave-1))*(e.fm||1));
  const op=owner&&G.players.get(owner);if(op){op.kills++;if(op.s.vamp&&!op.down)op.hp=Math.min(op.s.maxhp,op.hp+op.s.vamp)}
  ev(0,e.x|0,e.y|0,d.col,e.ty===7?3:(e.ty===3?1:0.5));
  if(e.ty===7){ev(9,e.x|0,e.y|0);G.boss=null;for(let i=0;i<24;i++)dropPickup(e.x+rand(-60,60),e.y+rand(-60,60),i<4?1:0)}
@@ -359,8 +367,11 @@ function killEnemy(e,owner){
 }
 function dropPickup(x,y,ty){if(G.pickups.length>160)return;G.pickups.push({id:G.nid++,ty,x,y,vx:rand(-90,90),vy:rand(-90,90),life:ty?16:13})}
 function rollChoices(p){
- const keys=Object.keys(UPG).filter(k=>(p.ups[k]||0)<UPG[k].max&&!(k==='medic'&&G.players.size<2));
- const out=[];while(out.length<3&&keys.length){out.push(keys.splice(Math.random()*keys.length|0,1)[0])}return out;
+ const keys=availUps(p);
+ const out=[];while(out.length<3&&keys.length){out.push(keys.splice(Math.random()*keys.length|0,1)[0])}if(!out.length)out.push('boost');return out;
+}
+function availUps(p){const k=Object.keys(UPG).filter(k=>(p.ups[k]||0)<UPG[k].max&&!(k==='medic'&&G.players.size<2)&&(!UPG[k].can||UPG[k].can(p.s,p)));return k.length?k:['boost']}
+function offerFor(p){return p.pickAny?availUps(p):rollChoices(p)
 }
 function applyPick(p,i){
  if(!p||p.picked||!p.choices)return;const k=p.choices[i|0];if(!k||!UPG[k])return;
@@ -368,11 +379,13 @@ function applyPick(p,i){
 }
 function waveCleared(){
  G.cleared=(G.cleared|0)+1;G.score+=50*G.wave;ev(12,G.wave);
- G.phase='upgrade';G.pt=NET.mode==='solo'?9999:30;G.ebullets=[];
+ G.phase=G.autoNext?'countdown':'upgrade';G.pt=G.autoNext?2.2:(NET.mode==='solo'?9999:30);G.ebullets=[];
  for(const p of G.players.values()){
   if(p.down){p.down=false;p.hp=Math.round(p.s.maxhp*0.4);p.inv=2;ev(6,p.id,p.x|0,p.y|0)}
   else p.hp=Math.min(p.s.maxhp,p.hp+p.s.maxhp*0.2);
-  p.choices=rollChoices(p);p.picked=false;
+  if(p.bankOn){p.banked=(p.banked|0)+1;p.choices=[];p.picked=true;sendChoices(p);continue}
+  if(G.autoNext){p.choices=null;p.picked=true;cuStart(p,1);continue}
+  p.choices=offerFor(p);p.picked=false;
   sendChoices(p);
  }
 }
@@ -384,14 +397,15 @@ function simTick(dt){
  if(ph==='countdown'){G.pt-=dt;if(G.pt<=0)startWave(G.wave+1)}
  else if(ph==='upgrade'){
   G.pt-=dt;let all=true;for(const p of G.players.values())if(!p.picked)all=false;
-  if(all||G.pt<=0){for(const p of G.players.values())if(!p.picked)applyPick(p,Math.random()*3|0);G.phase='countdown';G.pt=3.2}
+  if(all||G.pt<=0){for(const p of G.players.values())if(!p.picked)applyPick(p,Math.random()*(p.choices?p.choices.length:3)|0);G.phase='countdown';G.pt=3.2}
  }
  updatePlayers(dt);
  if(G.phase==='play'){
   G.spawnT-=dt;
   if(G.spawnT<=0&&G.queue.length){
-   if(G.enemies.length<70){const n=Math.min(G.queue.length,1+(Math.random()*Math.min(4,1+G.wave/3)|0));for(let i=0;i<n;i++)spawnEnemy(G.queue.shift())}
-   G.spawnT=G.spawnRate*rand(0.7,1.3);if(G.boss&&G.boss.sp<=0)G.spawnT*=1.6;
+   if(G.allAtOnce){const n=Math.min(G.queue.length,Math.max(0,WCAP+20-G.enemies.length));for(let i=0;i<n;i++)spawnEnemy(G.queue.shift())}
+   else if(G.enemies.length<70){const n=Math.min(G.queue.length,1+(Math.random()*Math.min(4,1+G.wave/3)|0));for(let i=0;i<n;i++)spawnEnemy(G.queue.shift())}
+   G.spawnT=G.allAtOnce?0.25:G.spawnRate*rand(0.7,1.3);if(G.boss&&G.boss.sp<=0&&!G.allAtOnce)G.spawnT*=1.6;
   }
   updateEnemies(dt);
  }
@@ -422,7 +436,7 @@ function updatePlayers(dt){
   let vx,vy;
   if(p.dashT>0){p.dashT-=dt;vx=p.ddx*s.spd*3.3;vy=p.ddy*s.spd*3.3}else{vx=mx*s.spd;vy=my*s.spd}
   p.x=clamp(p.x+(vx+p.kx)*dt,PR,AW-PR);p.y=clamp(p.y+(vy+p.ky)*dt,PR,AH-PR);
-  if(I.f&&p.fireCd<=0&&G.phase==='play'){firePlayer(p);p.fireCd=Math.max(p.fireCd,-STEP)+1/s.rate}
+  if(I.f&&p.fireCd<=0&&G.phase==='play'){firePlayer(p);p.fireCd=Math.max(p.fireCd,-STEP)+1/Math.min(s.rate,RCAP)}
   if(p.fireCd<0&&!I.f)p.fireCd=0;
   p.orbA+=dt*2.4;
   if(s.orbit>0&&G.phase==='play'){p.orbCd-=dt;if(p.orbCd<=0){p.orbCd=0.7;
@@ -474,26 +488,29 @@ function updateEnemies(dt){
   const kd=Math.pow(0.001,dt);e.kx*=kd;e.ky*=kd;
   e.x=clamp(e.x+(e.vx+e.kx)*dt,e.r,AW-e.r);e.y=clamp(e.y+(e.vy+e.ky)*dt,e.r,AH-e.r);
  }
- for(let i=0;i<E.length;i++){const a=E[i];if(a.sp>0)continue;for(let j=i+1;j<E.length;j++){const b=E[j];if(b.sp>0)continue;const dx=b.x-a.x,dy=b.y-a.y,rr=a.r+b.r;if(dx*dx+dy*dy<rr*rr){const d=hyp(dx,dy)||0.01,o=(rr-d)/2,ux=dx/d,uy=dy/d;const wa=a.ty===7?0.1:1,wb=b.ty===7?0.1:1;a.x-=ux*o*wa;a.y-=uy*o*wa;b.x+=ux*o*wb;b.y+=uy*o*wb}}}
+ const GRD=enemyGrid(E);
+ for(const a of E){if(a.sp>0)continue;const cx0=(a.x/GC)|0,cy0=(a.y/GC)|0;for(let gx=cx0-1;gx<=cx0+1;gx++)for(let gy=cy0-1;gy<=cy0+1;gy++){const cell=GRD.get(gx*4096+gy);if(!cell)continue;for(const b of cell){if(b.id<=a.id)continue;const dx=b.x-a.x,dy=b.y-a.y,rr=a.r+b.r;if(dx*dx+dy*dy<rr*rr){const d=hyp(dx,dy)||0.01,o=(rr-d)/2,ux=dx/d,uy=dy/d;const wa=a.ty===7?0.1:1,wb=b.ty===7?0.1:1;a.x-=ux*o*wa;a.y-=uy*o*wa;b.x+=ux*o*wb;b.y+=uy*o*wb}}}}
  for(const e of E){if(e.sp>0)continue;for(const p of G.players.values()){if(p.down)continue;const rr=e.r+PR-4;if((p.x-e.x)**2+(p.y-e.y)**2<rr*rr)damagePlayer(p,ET[e.ty].dmg*(1+0.03*G.wave),e.x,e.y)}}
 }
 function updateBullets(dt){
- const B=G.bullets;
+ const B=G.bullets;const GRD=enemyGrid(G.enemies);
  for(const b of B){
   b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
   if(b.x<0||b.x>AW){if(b.bounce>0){b.bounce--;b.vx*=-1;b.x=clamp(b.x,0,AW);b.hits.length=0;b.life=Math.max(b.life,0.6)}else b.life=0}
   if(b.y<0||b.y>AH){if(b.bounce>0){b.bounce--;b.vy*=-1;b.y=clamp(b.y,0,AH);b.hits.length=0;b.life=Math.max(b.life,0.6)}else b.life=0}
   if(b.life<=0)continue;
-  for(const e of G.enemies){
+  const bx=(b.x/GC)|0,by=(b.y/GC)|0;let stop=false;
+  for(let gx=bx-1;gx<=bx+1&&!stop;gx++)for(let gy=by-1;gy<=by+1&&!stop;gy++){const cell=GRD.get(gx*4096+gy);if(!cell)continue;
+  for(const e of cell){
    if(e.sp>0||e.dead)continue;const rr=e.r+b.r;
    if((b.x-e.x)**2+(b.y-e.y)**2<rr*rr&&!b.hits.includes(e.id)){
-    const owner=G.players.get(b.owner);const crit=owner&&Math.random()<owner.s.crit;const dmg=b.dmg*(crit?2:1);
+    const owner=G.players.get(b.owner);const crit=owner&&Math.random()<owner.s.crit;const dmg=b.dmg*(crit?(owner.s.critm||2):1);
     e.hp-=dmg;e.flash=0.07;const kb=e.ty===7?0.004:(0.05*16/e.r);e.kx+=b.vx*kb;e.ky+=b.vy*kb;
     ev(1,b.x|0,b.y|0,Math.round(dmg),crit?1:0);
     if(e.hp<=0)killEnemy(e,b.owner);
-    if(b.pierce>0){b.pierce--;b.hits.push(e.id)}else{b.life=0;break}
+    if(b.pierce>0){b.pierce--;b.hits.push(e.id)}else{b.life=0;stop=true;break}
    }
-  }
+  }}
  }
  G.bullets=B.filter(b=>b.life>0);
  G.enemies=G.enemies.filter(e=>!e.dead);
@@ -520,12 +537,12 @@ function updatePickups(dt){
  G.pickups=G.pickups.filter(k=>k.life>0);
 }
 function makeSnap(){
- const p=[];for(const q of G.players.values())p.push([q.id,q.x|0,q.y|0,+q.ang.toFixed(2),Math.ceil(q.hp),q.s.maxhp,q.down?1:0,(q.rev*100)|0,q.inv>0?1:0,q.dashT>0?1:0,q.picked?1:0,q.s.orbit,+(q.orbA%TAU).toFixed(2),Math.round(q.dashCd/q.s.dashcd*100),Math.round(q.s.spd),q.kills,q.ci,plName(q),+q.s.dashcd.toFixed(2),upCount(q),q.cu?q.cu.left:0]);
+ const p=[];for(const q of G.players.values())p.push([q.id,q.x|0,q.y|0,+q.ang.toFixed(2),Math.ceil(q.hp),q.s.maxhp,q.down?1:0,(q.rev*100)|0,q.inv>0?1:0,q.dashT>0?1:0,q.picked?1:0,q.s.orbit,+(q.orbA%TAU).toFixed(2),Math.round(q.dashCd/q.s.dashcd*100),Math.round(q.s.spd),q.kills,q.ci,plName(q),+q.s.dashcd.toFixed(2),upCount(q),q.cu?q.cu.left:0,q.banked|0,q.bankOn?1:0]);
  const e=G.enemies.map(e=>[e.id,e.ty,e.x|0,e.y|0,Math.max(0,Math.ceil(e.hp/e.mhp*100)),e.flash>0?1:0,e.sp>0?1:0,e.st===1?1:0,+(e.rot%TAU).toFixed(2),+e.ang.toFixed(2)]);
  const b=[];for(const q of G.bullets)b.push(q.x|0,q.y|0,q.vx|0,q.vy|0,q.ci,Math.round(q.r));
  const eb=[];for(const q of G.ebullets)eb.push(q.x|0,q.y|0,q.vx|0,q.vy|0);
  const k=G.pickups.map(q=>[q.id,q.ty,q.x|0,q.y|0,q.life<3?1:0]);
- return {t:'s',ph:G.phase,w:G.wave,sc:G.score,left:G.queue.length+G.enemies.length,pt:Math.ceil(G.pt),p,e,b,eb,k,cl:G.cleared|0,ch:G.cheat|0,bh:G.boss&&G.boss.sp<=0?+Math.max(0,G.boss.hp/G.boss.mhp).toFixed(3):-1};
+ return {t:'s',ph:G.phase,w:G.wave,sc:G.score,left:G.queue.length+G.enemies.length,pt:Math.ceil(G.pt),p,e,b,eb,k,cl:G.cleared|0,ch:G.cheat|0,an:G.autoNext?1:0,aa:G.allAtOnce?1:0,bh:G.boss&&G.boss.sp<=0?+Math.max(0,G.boss.hp/G.boss.mhp).toFixed(3):-1};
 }
 
 // ================= networking =================
@@ -580,7 +597,7 @@ function onHostData(c,d){
  if(d.t==='in'){p.inp={mx:clamp(+d.mx||0,-1,1),my:clamp(+d.my||0,-1,1),a:+d.a||0,f:d.f?1:0,d:d.d|0}}
  else if(d.t==='pick'){applyPick(p,d.i)}
  else if(d.t==='mod'){modHost(p,d)}
- else if(d.t==='cup'){cuPick(p,d.i===-1?-1:clamp(d.i|0,0,2))}
+ else if(d.t==='cup'){cuPick(p,d.i===-1?-1:clamp(d.i|0,0,63))}
 }
 function sendChoices(p){if(NET.mode!=='host'||p.id==='h')return;for(const v of NET.conns.values())if(v.pid===p.id){try{v.conn.send({t:'ch',c:p.choices,ups:p.ups})}catch(e){}}}
 function broadcast(){
@@ -621,7 +638,7 @@ function onClientData(d){
  if(d.t==='wel'){NET.myId=d.id;NET.myIdSet=true;clearTimeout(NET.joinTimer);showScreen('game');Snd.play('join');toast('Joined room '+d.code+'!')}
  else if(d.t==='full'){failJoin('That room is full (5 pilots max).')}
  else if(d.t==='ch'){CL.choices=d.c;CL.ups=d.ups||{};CL.picked=false;if(CV&&CV.ph==='upgrade')renderCards()}
- else if(d.t==='tr'||d.t==='trk'||d.t==='cu'||d.t==='mk')modRecv(d);
+ else if(d.t==='tr'||d.t==='trk'||d.t==='cu'||d.t==='mk'||d.t==='mst')modRecv(d);
  else if(d.t==='s'){CL.snap=d;CL.snapT=performance.now();CV=d;if(d.ev)handleEvents(d.ev)}
 }
 function backToTitle(){
@@ -666,7 +683,7 @@ function onKeyPress(k){
  else if(k==='f')toggleAuto();
  else if(k==='m')Snd.setMuted(!Snd.muted);
  else if(k==='p'||k==='escape')togglePause();
- else if(k==='1'||k==='2'||k==='3'){if($('#upgrade').classList.contains('show'))pickCard(+k-1)}
+ else if(/^[1-9]$/.test(k)){if($('#upgrade').classList.contains('show'))pickCard(+k-1)}
 }
 function doDash(){
  IN.d=(IN.d+1)%1000;
@@ -945,23 +962,24 @@ const MTRP={ // id:[name,emoji,cooldown s,desc,kind j=jumpscare p=prank, invulne
 const MDUR={scare:1500,dc:5200,delay:30000,over:6500,flip:8000,spin:12000,inv:8000,size:12000,fart:20000,duck:15000,roast:9000,name:60000};
 const MSILLY=['Captain Oops','Space Potato','Lil Comet','Sir Pew-Pew','Astro Nugget','Cosmic Toaster','NPC #4092','Rocket Baby','Major Tomato','Pilot Snacks','Glitch Magnet','Meteor Brain'];
 const MROAST=['🐢 Slowest Pilot in the Galaxy','🎯 Stormtrooper Aim','🧻 Paper Hull','🛸 Got Lost in Space','🤖 Glitch-bot\'s Best Friend','🥔 Potato Reflexes','😴 AFK Astronaut','💥 Dodged Nothing','🍼 Needs Training Wheels','🫠 Massive Skill Issue','🧲 Bullet Magnet','🐌 Turbo Snail'];
-const MODL={open:false,tab:'cu',to:null,cd:{},fx:{},shield:!!STORE.get('mshield',false),rv:STORE.get('mrv',0)|0,autoCU:STORE.get('mautocu',true)!==false,big:false,trail:false,party:0,last0:0,taps:[],js:0,lastScare:-1e9,armed:0,armBy:null,size:1,recv:0,status:'',cu:null,wasPaused:null,conf:[],dirty:false,_s:''};
+const MODL={open:false,tab:'cu',to:null,cd:{},fx:{},shield:!!STORE.get('mshield',false),rv:STORE.get('mrv',0)|0,autoCU:STORE.get('mautocu',true)!==false,bank:!!STORE.get('mbank',false),any:!!STORE.get('many',false),prefSent:false,st:null,cuPause:null,big:false,trail:false,party:0,last0:0,taps:[],js:0,lastScare:-1e9,armed:0,armBy:null,size:1,recv:0,status:'',cu:null,wasPaused:null,conf:[],dirty:false,_s:''};
 const mOn=id=>(MODL.fx[id]||0)>mNow();
 // ---------- host side ----------
 function upCount(p){let n=0;for(const k in p.ups)n+=p.ups[k];return n}
-function owedUps(p){if(!G||G.phase==='lobby')return 0;return Math.max(0,(G.cleared|0)-upCount(p)-(G.phase==='upgrade'&&!p.picked?1:0)-(p.cu?p.cu.left:0))}
+function owedUps(p){if(!G||G.phase==='lobby')return 0;return Math.max(0,(G.cleared|0)-upCount(p)-(G.phase==='upgrade'&&!p.picked?1:0)-(p.cu?p.cu.left:0)-(p.banked|0))}
 function plName(q){return q.nick&&q.nickT>mNow()?q.nick:q.name}
 function hostSendTo(id,m){if(id===NET.myId){modRecv(m);return}for(const v of NET.conns.values())if(v.pid===id&&v.conn.open){try{v.conn.send(m)}catch(e){}}}
 function cuStart(p,n){if(!p||!G||G.phase==='lobby'||G.phase==='over'||n<=0)return 0;if(p.cu)p.cu.left+=n;else p.cu={left:n,choices:null,t:0,total:0};p.cu.total+=n;if(!p.cu.choices)cuNext(p);else cuSend(p);return n}
 function cuSend(p){const c=p.cu;hostSendTo(p.id,c?{t:'cu',c:c.choices,left:c.left,ups:p.ups}:{t:'cu',done:1})}
 function cuNext(p){const c=p.cu;if(!c)return;if(c.left<=0){p.cu=null;hostSendTo(p.id,{t:'cu',done:1,n:c.total});return}
- const ch=rollChoices(p);if(!ch.length){p.cu=null;hostSendTo(p.id,{t:'cu',done:1,n:c.total,max:1});return}c.choices=ch;c.t=0;cuSend(p)}
+ const ch=offerFor(p);if(!ch.length){p.cu=null;hostSendTo(p.id,{t:'cu',done:1,n:c.total,max:1});return}c.choices=ch;c.t=0;cuSend(p)}
 function cuApply(p,k){if(!UPG[k])return;UPG[k].ap(p.s,p);p.ups[k]=(p.ups[k]||0)+1;p.hp=Math.min(p.hp,p.s.maxhp);ev(13,p.id)}
 function cuPick(p,i){const c=p&&p.cu;if(!c||!c.choices)return;
  if(i===-1){while(c.left>0){const ch=rollChoices(p);if(!ch.length)break;cuApply(p,mPick(ch));c.left--}c.left=0;cuNext(p);return}
  const k=c.choices[i|0];if(!k)return;cuApply(p,k);c.left--;c.choices=null;cuNext(p)}
 function modTick(dt){
  if(!G)return;
+ if(NET.mode!=='client'){const me0=G.players.get(NET.myId);if(me0){me0.bankOn=MODL.bank;me0.pickAny=MODL.any}}
  if(G.god>0){G.god-=dt;for(const p of G.players.values())if(!p.down)p.inv=Math.max(p.inv,0.2)}
  for(const p of G.players.values()){if(!p.cu)continue;p.inv=Math.max(p.inv,0.3);p.cu.t+=dt;if(p.cu.t>20)cuPick(p,-1)}
 }
@@ -988,6 +1006,11 @@ function modHost(p,d){ // p = sender player object
   hostSendTo(pid,{t:'mk',msg:tot?'🚀 Sent '+tot+' catch-up upgrade'+(tot>1?'s':''):'Nobody is behind right now 👍'});
  }
  else if(d.a==='plus1'&&host){const tp=G.players.get(d.to);if(tp&&cuStart(tp,1))hostSendTo(pid,{t:'mk',msg:'➕ Gave '+tp.name+' +1 upgrade'});else hostSendTo(pid,{t:'mk',msg:'Not during the lobby / game over'})}
+ else if(d.a==='prefs'){p.bankOn=!!d.bank;p.pickAny=!!d.any}
+ else if(d.a==='cash'){const n=p.banked|0;if(n>0&&cuStart(p,n)){p.banked=0;hostSendTo(pid,{t:'mk',msg:'🏦 Cashing in '+n+' upgrade'+(n>1?'s':'')})}}
+ else if(d.a==='stats'){hostSendTo(pid,{t:'mst',ups:p.ups,s:p.s,banked:p.banked|0})}
+ else if(d.a==='autonext'&&host){G.autoNext=!!d.v;STORE.set('mautonext',G.autoNext)}
+ else if(d.a==='allatonce'&&host){G.allAtOnce=!!d.v;STORE.set('mallatonce',G.allAtOnce)}
  else if(d.a==='autocu'&&host){MODL.autoCU=!!d.v;STORE.set('mautocu',MODL.autoCU)}
  else if(d.a==='cheat'&&host){
   const k=d.k;let lbl='';
@@ -1005,6 +1028,7 @@ function modAct(d){if(NET.mode==='client'){try{NET.conn&&NET.conn.open&&NET.conn
 function modRecv(m){
  if(!m||typeof m!=='object')return;
  if(m.t==='trk'){mAck(m);return}
+ if(m.t==='mst'){MODL.st=m;if(MODL.open&&MODL.tab==='up'){MODL.dirty=true;mRender()}return}
  if(m.t==='mk'){MODL.status=String(m.msg||'');if(MODL.open)mRender();return}
  if(m.t==='cu'){if(m.done){MODL.cu=null;cuHide();if(m.n)toast('✅ Caught up! +'+m.n+' upgrade'+(m.n>1?'s':'')+(m.max?' (everything maxed)':''),2500)}else{MODL.cu={c:Array.isArray(m.c)?m.c:[],left:m.left|0,ups:m.ups||{}};cuShow()}return}
  if(m.t!=='tr'||typeof m.p!=='string'||!mHas(MTRP,m.p)||!NET.mode)return;
@@ -1047,7 +1071,7 @@ function modInvert(){return mOn('inv')}
 function modShipScale(){return mOn('size')?MODL.size:1}
 function modDucks(){return mOn('duck')}
 function drawDuckBullets(b,age){cx.textAlign='center';cx.textBaseline='middle';cx.font='22px system-ui';for(let i=0;i<b.length;i+=6){const x=b[i]+b[i+2]*age,y=b[i+1]+b[i+3]*age;cx.save();cx.translate(x,y);if(b[i+2]<0)cx.scale(-1,1);cx.fillText('🦆',0,0);cx.restore()}}
-function drawCheatBadge(v){if(!v||!v.ch)return;cx.textBaseline='middle';cx.textAlign='center';cx.fillStyle='#ff5f7a';rr(220,10,96,24,12);cx.fill();cx.fillStyle='#fff';cx.font='900 12px system-ui,sans-serif';cx.fillText('🤡 CHEATER',268,23)}
+function drawCheatBadge(v){if(!v)return;const m=v.p.find(q=>q[0]===NET.myId);if(m&&(m[21]>0||m[22])){cx.textAlign='left';cx.textBaseline='middle';cx.fillStyle='rgba(10,14,40,0.75)';rr(10,98,200,24,8);cx.fill();cx.fillStyle='#8dff4a';cx.font='800 12px system-ui,sans-serif';cx.fillText('🏦 Banked: '+(m[21]|0)+(m[21]>0?IN.touch?'  · menu → Cash in':'  · press U to cash in':''),20,110)}if(!v.ch)return;cx.textBaseline='middle';cx.textAlign='center';cx.fillStyle='#ff5f7a';rr(220,10,96,24,12);cx.fill();cx.fillStyle='#fff';cx.font='900 12px system-ui,sans-serif';cx.fillText('🤡 CHEATER',268,23)}
 // ---------- overlay canvas (jumpscare, confetti) ----------
 const mcv=document.createElement('canvas');mcv.id='mcv';document.body.appendChild(mcv);const mcx=mcv.getContext('2d');let MDPR=1,mClean=true;
 function mResize(){MDPR=Math.min(devicePixelRatio||1,2);mcv.width=Math.round(innerWidth*MDPR);mcv.height=Math.round(innerHeight*MDPR)}mResize();addEventListener('resize',mResize);
@@ -1057,6 +1081,9 @@ function mFrame(now){
  try{
   const b=document.body.classList;b.toggle('m-flip',mOn('flip'));b.toggle('m-spin',mOn('spin'));b.toggle('m-big',MODL.big);
   if(MODL.armed&&MODL.armed<now)MODL.armed=0;
+  if(NET.mode==='client'&&NET.myIdSet&&!MODL.prefSent){MODL.prefSent=true;modAct({a:'prefs',bank:MODL.bank,any:MODL.any})}
+  if(!NET.myIdSet&&NET.mode==='client')MODL.prefSent=false;
+  if(MODL.open&&MODL.tab==='up'&&(!MODL._stT||now-MODL._stT>1000)){MODL._stT=now;modAct({a:'stats'})}
   if(MODL.cu){const v=view();if(!v||v.ph==='over'){MODL.cu=null;cuHide()}}
   if(MODL.armed&&IN.f&&NET.mode&&!MODL.open){MODL.armed=0;if(!MODL.shield){mJump();modAct({a:'safe'});if(MODL.armBy)mReveal(MODL.armBy,1900)}}
   if(MODL.trail&&NET.mode&&view()){const p=myPos();burst(p.x,p.y,'hsl('+((now/8)%360)+',100%,60%)',2,60,0.5,4)}
@@ -1078,10 +1105,10 @@ function mFrame(now){
 requestAnimationFrame(mFrame);
 // ---------- catch-up picker ----------
 const mcu=document.createElement('div');mcu.id='mcu';document.body.appendChild(mcu);
-function cuShow(){const c=MODL.cu;if(!c)return;if(MODL.open)modOpen(false);
- mcu.innerHTML='<div class="panel"><h2 style="margin:0 0 2px">🚀 Catch-up upgrades</h2><div class="muted">Pick 1 of 3 · <b id="mcuLeft">'+c.left+'</b> left · you\'re shielded while you choose</div><div class="cards">'+c.c.map((k,i)=>{const u=UPG[k];return u?'<div class="card" data-cu="'+i+'"><div class="key">['+(i+1)+']</div><div class="ic">'+u.ic+'</div><div class="nm">'+mEsc(u.name)+'</div><div class="ds">'+mEsc(u.desc)+'</div><div class="lv">'+(c.ups[k]?'Level '+(c.ups[k]+1):'NEW')+'</div></div>':''}).join('')+'</div><button class="big" data-cu="-1">🎲 Random all ('+c.left+')</button><div class="muted" style="font-size:11px;margin-top:6px">AFK? The rest get auto-picked after 20s.</div></div>';
+function cuShow(){const c=MODL.cu;if(!c)return;if(MODL.open)modOpen(false);if(NET.mode==='solo'&&MODL.cuPause===null){MODL.cuPause=paused;paused=true}const many=c.c.length>3;
+ mcu.innerHTML='<div class="panel"><h2 style="margin:0 0 2px">🚀 Spend your upgrades</h2><div class="muted">'+(many?'Pick ANY upgrade':'Pick 1 of 3')+' · <b id="mcuLeft">'+c.left+'</b> left · '+(NET.mode==='solo'?'game paused':'you\'re shielded while you choose')+'</div><div class="cards'+(many?' many':'')+'">'+c.c.map((k,i)=>{const u=UPG[k];return u?'<div class="card" data-cu="'+i+'"><div class="key">'+(i<9?'['+(i+1)+']':'')+'</div><div class="ic">'+u.ic+'</div><div class="nm">'+mEsc(u.name)+'</div><div class="ds">'+mEsc(u.desc)+'</div><div class="lv">'+(c.ups[k]?'Level '+(c.ups[k]+1):'NEW')+'</div></div>':''}).join('')+'</div><button class="big" data-cu="-1">🎲 Random all ('+c.left+')</button><div class="muted" style="font-size:11px;margin-top:6px">AFK? The rest get auto-picked after 20s.</div></div>';
  mcu.classList.add('show');mcu._busy=false}
-function cuHide(){mcu.classList.remove('show');mcu.innerHTML=''}
+function cuHide(){mcu.classList.remove('show');mcu.innerHTML='';if(MODL.cuPause!==null){paused=MODL.cuPause;MODL.cuPause=null}}
 function cuChoose(i){if(!MODL.cu||mcu._busy)return;mcu._busy=true;Snd.play('pick');for(const el of mcu.querySelectorAll('.card'))el.classList.add(+el.dataset.cu===i?'chosen':'dim');
  if(NET.mode==='client'){try{NET.conn.send({t:'cup',i})}catch(e){}}else if(G){cuPick(G.players.get(NET.myId),i)}}
 mcu.addEventListener('click',e=>{const t=e.target.closest('[data-cu]');if(t)cuChoose(+t.dataset.cu)});
@@ -1094,15 +1121,16 @@ function modOpen(v){if(!inRun())v=false;if(v===MODL.open)return;MODL.open=v;mml.
 function isHostM(){return NET.mode==='host'||NET.mode==='solo'}
 function mRender(){
  const v=view();if(!v){modOpen(false);return}
- const list=v.p.map(p=>[p[0],p[17],p[16],p[19]|0,p[20]|0,p[6]]),ids=list.map(p=>p[0]);
+ const list=v.p.map(p=>[p[0],p[17],p[16],p[19]|0,(p[20]|0)+(p[21]|0),p[6]]),ids=list.map(p=>p[0]);
  if(MODL.to!=='all'&&!ids.includes(MODL.to))MODL.to=ids.find(i=>i!==NET.myId)||NET.myId;
  if(MODL.to==='all'&&ids.length<2)MODL.to=NET.myId;
  const cl=v.cl|0;
- const sig=JSON.stringify([MODL.tab,MODL.to,list,cl,v.ph,MODL.shield,MODL.rv,MODL.autoCU,MODL.big,MODL.trail,isHostM(),v.ch]);
+ const sig=JSON.stringify([MODL.bank,MODL.any,v.an,v.aa,MODL.tab==='up'?JSON.stringify(MODL.st):'',MODL.tab,MODL.to,list,cl,v.ph,MODL.shield,MODL.rv,MODL.autoCU,MODL.big,MODL.trail,isHostM(),v.ch]);
  if(sig!==MODL._s||MODL.dirty){MODL.dirty=false;MODL._s=sig;
-  const tabs=[['cu','🚀 Catch-Up'],['tr','😈 Troll'],['toy','🧸 Toys'],...(isHostM()?[['ch','🤡 Cheats']]:[]),['set','⚙️']];
+  const tabs=[['up','⬆️ Upgrades'],['cu','🚀 Catch-Up'],['tr','😈 Troll'],['toy','🧸 Toys'],...(isHostM()?[['ch','🤡 Cheats']]:[]),['set','⚙️']];
   let h='<div class="mp"><div class="mh"><b>🛸 STARLIGHT MOD MENU</b><span>shh 🤫</span><button data-mc>✕</button></div><div class="mt">'+tabs.map(([k,n])=>'<button data-mt="'+k+'" class="'+(MODL.tab===k?'on':'')+'">'+n+'</button>').join('')+'</div>';
-  if(MODL.tab==='cu'){
+  if(MODL.tab==='up'){h+=mUpTab(v,list)}
+  else if(MODL.tab==='cu'){
    h+='<div class="muted mfine">Everyone earns 1 upgrade per cleared wave. Waves cleared this run: <b>'+cl+'</b>. Catch-up gives a player the upgrades they\'re missing as pick-1-of-3 screens.</div><div class="mcl">';
    for(const p of list){const owe=Math.max(0,cl-p[3]-p[4]);h+='<div class="mrow"><i style="background:'+COLORS[p[2]]+'"></i><span class="mn">'+mEsc(p[1])+(p[0]===NET.myId?' (me)':'')+'</span><span class="mu">'+p[3]+' / '+cl+' ups'+(p[4]?' · picking '+p[4]:'')+(owe?' · <b style="color:#ffcc33">'+owe+' behind</b>':' · ✅')+'</span><button data-cuto="'+mEsc(p[0])+'"'+(owe?'':' disabled')+'>Catch up</button>'+(isHostM()?'<button data-p1="'+mEsc(p[0])+'">+1</button>':'')+'</div>'}
    h+='</div><button class="big" data-cuto="behind">🚀 Catch up everyone who\'s behind</button>';
@@ -1139,7 +1167,7 @@ setInterval(()=>{if(MODL.open)mRender()},250);
 function mAck(m){const P=MTRP[m.p];if(!P)return;if(m.cd)MODL.cd[m.p]=mNow()+m.cd*1000;MODL.status=m.ok?'✅ '+P[1]+' '+P[0]+' sent'+(m.n>1?' to '+m.n+' pilots':'')+'. 😈':(m.why==='cd'?'⏳ '+P[0]+' is cooling down.':'Nobody to prank.');if(MODL.open)mRender()}
 mml.addEventListener('click',e=>{
  if(e.target===mml||e.target.closest('[data-mc]')){modOpen(false);return}
- const t=e.target.closest('button');if(!t)return;const d=t.dataset;Snd.init();
+ const t=e.target.closest('button');if(!t)return;const d=t.dataset;Snd.init();const v0=view()||{};
  if(d.mt){MODL.tab=d.mt;MODL.status=''}
  else if(d.to)MODL.to=d.to;
  else if(d.p){if(!mHas(MTRP,d.p))return;if((MODL.cd[d.p]||0)>mNow()){Snd.play('click');return}MODL.status='Sending…';modAct({a:'tr',p:d.p,to:MODL.to,rv:MODL.rv})}
@@ -1148,13 +1176,15 @@ mml.addEventListener('click',e=>{
  else if('autocu' in d){MODL.autoCU=!MODL.autoCU;STORE.set('mautocu',MODL.autoCU)}
  else if(d.ch){modAct({a:'cheat',k:d.ch})}
  else if(d.toy){const k=d.toy;if(k==='trail')MODL.trail=!MODL.trail;else if(k==='party'){MODL.party=mNow()+12000;Snd.play('join')}else if(k==='big')MODL.big=!MODL.big;else if(k==='horn'){if(Snd.ctx&&!Snd.muted)mHorn()}else if(k==='fart')mFart(true);else if(k==='self'){modOpen(false);mJump()}}
+ else if(d.ut){const k=d.ut;if(k==='bank'){MODL.bank=!MODL.bank;STORE.set('mbank',MODL.bank);modAct({a:'prefs',bank:MODL.bank,any:MODL.any})}else if(k==='any'){MODL.any=!MODL.any;STORE.set('many',MODL.any);modAct({a:'prefs',bank:MODL.bank,any:MODL.any})}else if(k==='cash')modAct({a:'cash'});else if(k==='autonext')modAct({a:'autonext',v:!v0.an});else if(k==='allatonce')modAct({a:'allatonce',v:!v0.aa});MODL._stT=0}
  else if(d.set){if(d.set==='shield'){MODL.shield=!MODL.shield;STORE.set('mshield',MODL.shield)}else{MODL.rv=(MODL.rv+1)%3;STORE.set('mrv',MODL.rv)}}
  Snd.play('click');MODL.dirty=true;mRender();
 });
 addEventListener('keydown',e=>{
  if(e.target&&e.target.tagName==='INPUT')return;
  if(e.key==='Escape'&&MODL.open){modOpen(false);e.stopImmediatePropagation();e.preventDefault();return}
- if(MODL.cu&&mcu.classList.contains('show')&&['1','2','3'].includes(e.key)){cuChoose(+e.key-1);e.stopImmediatePropagation();return}
+ if(MODL.cu&&mcu.classList.contains('show')&&/^[1-9]$/.test(e.key)&&+e.key<=MODL.cu.c.length){cuChoose(+e.key-1);e.stopImmediatePropagation();return}
+ if((e.key==='u'||e.key==='U')&&!e.repeat&&inRun()){const m=myView();if(m&&m[21]>0){modAct({a:'cash'});e.stopImmediatePropagation()}else if(m)toast('🏦 No banked upgrades yet',1500)}
  if(e.key==='0'&&!e.repeat){const now=mNow();if(now-MODL.last0<400){MODL.last0=0;modOpen(!MODL.open)}else MODL.last0=now;e.stopImmediatePropagation()}
 },true);
 // phones: triple-tap the WAVE / TEAM SCORE box (top-left)
@@ -1189,7 +1219,13 @@ addEventListener('mousedown',e=>{if(!IN.touch)mTap(e.clientX,e.clientY)},true);
 #mml .mset{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}#mml .mset button{text-align:left;background:#ffffff0c;border:1px solid #ffffff1f;color:#fff;border-radius:12px;padding:10px 12px;font-size:14px;box-shadow:none}#mml .mset button.on{border-color:#8dff4a}#mml .mset small{display:block;font-size:11px;opacity:.6;margin-top:2px;font-weight:400}
 #mml .mfine{font-size:12px;margin:4px 0 6px}#mml .mst{min-height:18px;margin-top:8px;font-weight:800;color:#8dff4a;font-size:13px}
 #mcu{position:fixed;inset:0;z-index:25;display:none;align-items:center;justify-content:center;padding:14px;background:rgba(7,11,31,.72)}
-#mcu.show{display:flex}#mcu .panel{max-width:600px;text-align:center}
+#mcu.show{display:flex}#mcu .panel{max-width:640px;text-align:center;max-height:94vh;overflow:auto}
+.cards.many{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:7px}.cards.many .card{width:auto;min-height:0;padding:8px 6px}.cards.many .ic{font-size:26px}.cards.many .nm{font-size:13px}.cards.many .ds{font-size:10.5px}
+#mml .mcash{display:flex;align-items:center;gap:10px;background:#8dff4a14;border:1px solid #8dff4a55;border-radius:12px;padding:8px 10px;margin-bottom:8px}#mml .mcash>div{flex:1}#mml .mcash .big{width:auto;margin:0;padding:8px 14px}#mml .mcash .big[disabled]{opacity:.4}
+#mml .mset2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}#mml .mset2 .mtog{margin:0}#mml .mtog small{display:block;font-size:10.5px;opacity:.6;font-weight:400;margin-top:2px}
+#mml .mupl{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:5px;margin-bottom:8px}#mml .mupl div{display:flex;align-items:center;gap:6px;background:#ffffff0a;border-radius:8px;padding:4px 8px;font-size:12.5px}#mml .mupl span{font-size:18px}#mml .mupl b{flex:1}#mml .mupl i{font-style:normal;color:#ffcc33;font-weight:900}#mml .mupl small{opacity:.5;font-size:10px}
+#mml .mstat{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:3px 10px;font-size:12.5px}#mml .mstat div{display:flex;justify-content:space-between;border-bottom:1px solid #ffffff12;padding:2px 0}#mml .mstat span{opacity:.7}
+@media (max-width:520px){#mml .mset2{grid-template-columns:1fr}}
 .mscr{position:fixed;inset:0;z-index:35;display:flex;align-items:center;justify-content:center;padding:14px;background:radial-gradient(ellipse at center,rgba(7,11,31,.8),rgba(7,11,31,.96))}
 .mscr .panel{text-align:center}
 .mban{position:fixed;left:50%;top:70px;transform:translateX(-50%);z-index:36;background:linear-gradient(90deg,#2a2060,#463a9a);border:2px solid #ffcc33;border-radius:14px;padding:8px 18px;text-align:center;box-shadow:0 8px 30px #0008;transition:opacity .4s,transform .4s;max-width:92vw;color:#fff}
@@ -1200,6 +1236,21 @@ body.m-spin #c{animation:mspin 12s linear}
 @keyframes mspin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 body.m-big #c{cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Ccircle cx='48' cy='48' r='30' fill='none' stroke='%23ff4d8d' stroke-width='6'/%3E%3Cpath d='M48 4v28M48 64v28M4 48h28M64 48h28' stroke='%23ff4d8d' stroke-width='6'/%3E%3C/svg%3E") 48 48,crosshair!important}
 `;document.head.appendChild(st)}
+const STATL=[['dmg','Damage',x=>x.toFixed(x<100?1:0)],['rate','Fire rate',x=>x.toFixed(1)+'/s'],['multi','Projectiles',x=>x],['maxhp','Max HP',x=>Math.round(x)],['spd','Speed',x=>Math.round(x)],['crit','Crit chance',x=>Math.round(x*100)+'%'],['critm','Crit damage',x=>'x'+x.toFixed(2)],['armor','Damage taken',x=>Math.round(x*100)+'%'],['regen','Regen',x=>x.toFixed(1)+' HP/s'],['vamp','HP per takedown',x=>x.toFixed(1)],['pierce','Pierce',x=>x],['bounce','Ricochets',x=>x],['dashcd','Dash cooldown',x=>x.toFixed(2)+'s'],['orbit','Orbit drones',x=>x],['magnet','Pickup range',x=>Math.round(x)],['revive','Revive speed',x=>'x'+x],['bsize','Bullet size',x=>x.toFixed(1)]];
+function mUpTab(v,list){
+ const me0=v.p.find(q=>q[0]===NET.myId);const banked=me0?me0[21]|0:0;const st=MODL.st;
+ let h='<div class="mcash"><div><b>🏦 Banked upgrades: '+banked+'</b><div class="mfine muted">Earned upgrade points you saved for later. Hotkey: <b>U</b></div></div><button class="big" data-ut="cash"'+(banked?'':' disabled')+'>Cash in '+banked+'</button></div>';
+ h+='<div class="mset2"><button data-ut="bank" class="mtog'+(MODL.bank?' on':'')+'">🏦 Bank my upgrades: <b>'+(MODL.bank?'ON':'OFF')+'</b><small>Each cleared wave adds a banked point instead of a picker.</small></button>'+
+  '<button data-ut="any" class="mtog'+(MODL.any?' on':'')+'">🎯 Pick any upgrade: <b>'+(MODL.any?'ON':'OFF')+'</b><small>Spend points on ANY upgrade instead of 1 of 3. Not a cheat.</small></button>';
+ if(isHostM())h+='<button data-ut="autonext" class="mtog'+(v.an?' on':'')+'">⏭️ Auto-next wave: <b>'+(v.an?'ON':'OFF')+'</b><small>No upgrade break: the next wave starts by itself (players not banking get a quick picker).</small></button>'+
+  '<button data-ut="allatonce" class="mtog'+(v.aa?' on':'')+'">🌊 Whole wave at once: <b>'+(v.aa?'ON':'OFF')+'</b><small>The entire wave spawns immediately (big waves fold into tougher bots past '+WCAP+' on screen). Starts next wave.</small></button>';
+ h+='</div>';
+ if(!st){h+='<div class="muted mfine">Loading your upgrades…</div>';return h}
+ const ks=Object.keys(st.ups).filter(k=>st.ups[k]>0&&UPG[k]).sort((a,b)=>st.ups[b]-st.ups[a]);let tot=0;for(const k of ks)tot+=st.ups[k];
+ h+='<div class="mlab">MY UPGRADES ('+tot+')</div><div class="mupl">'+(ks.length?ks.map(k=>{const u=UPG[k];const mx=u.max===Infinity?'∞':u.max;return '<div><span>'+u.ic+'</span><b>'+mEsc(u.name)+'</b><i>×'+st.ups[k]+'</i><small>max '+mx+'</small></div>'}).join(''):'<div class="muted">None yet — clear a wave!</div>')+'</div>';
+ const s=st.s;const effR=Math.min(s.rate,RCAP),od=Math.max(1,s.rate/RCAP);
+ h+='<div class="mlab">MY STATS</div><div class="mstat">'+STATL.map(([k,n,f])=>{let val=f(+s[k]||0);if(k==='rate')val=effR.toFixed(1)+'/s'+(od>1?' (+'+Math.round((od-1)*100)+'% dmg overflow)':'');if(k==='dmg'&&od>1)val=f(s.dmg)+' ×'+od.toFixed(2);return '<div><span>'+n+'</span><b>'+val+'</b></div>'}).join('')+'</div>';
+ return h}
 window.__mod={MODL,MTRP,MDUR,modRecv,modOpen,mOn,owedUps,cuStart,upCount};
 
 // ================= UI / screens =================
@@ -1225,6 +1276,8 @@ function renderCards(){
  if(NET.mode==='client'){choices=CL.choices;ups=CL.ups;picked=CL.picked}else{const p=G&&G.players.get(NET.myId);if(!p)return;choices=p.choices;ups=p.ups;picked=p.picked}
  const box=$('#cards');box.innerHTML='';
  if(!choices){$('#upWait').textContent='Loading upgrades…';return}
+ if(!choices.length){const m=myView();box.innerHTML='<div class="panel" style="max-width:420px"><div style="font-size:40px">🏦</div><b>Upgrade banked!</b><div class="muted">You have '+((m&&m[21])|0)+' saved. Press U (or open the menu) to cash them in any time.</div></div>';return}
+ if(choices.length>3)box.classList.add('many');else box.classList.remove('many');
  choices.forEach((k,i)=>{const u=UPG[k];if(!u)return;const c=document.createElement('div');c.className='card'+(picked?' dim':'');c.innerHTML='<div class="key">['+(i+1)+']</div><div class="ic"></div><div class="nm"></div><div class="ds"></div><div class="lv"></div>';
   c.querySelector('.ic').textContent=u.ic;c.querySelector('.nm').textContent=u.name;c.querySelector('.ds').textContent=u.desc;c.querySelector('.lv').textContent=(ups&&ups[k])?'Level '+(ups[k]+1):'NEW';
   c.addEventListener('click',()=>pickCard(i));box.appendChild(c)});
@@ -1328,7 +1381,7 @@ let hidT=0;
 setInterval(()=>{const now=performance.now();if(!(document.hidden&&NET.mode==='host'&&G)){hidT=now;return}
  let n=Math.min(60,Math.round((now-hidT)/1000/STEP));hidT=now;acc=0;
  for(let i=0;i<n;i++){simTick(STEP);tickN++;const evs=G.events;G.events=[];for(const e of evs)G.netEv.push(e)}if(n)broadcast()},100);
-window.__ssq={cam,dims:()=>({W,H,SC,DPR,cw:cv.width,iw:innerWidth}),get G(){return G},NET,IN,CL,get CV(){return CV},startWave:n=>startWave(n),view,KEYS};
+window.__ssq={cam,dims:()=>({W,H,SC,DPR,cw:cv.width,iw:innerWidth}),get G(){return G},NET,IN,CL,get CV(){return CV},startWave:n=>startWave(n),view,KEYS,simTick,waveCleared,rollChoices,applyPick,UPG};
 </script>
 </body>
 </html>
