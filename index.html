@@ -659,9 +659,9 @@ function aiNew(e,t,dist,ux,uy,dt){
    if(e.st===0){if(dist<75&&t){e.st=1;e.stT=0.45}}
    else{M.dvx=M.dvy=0;M.steer=12;e.stT-=dt;if(e.stT<=0){boom(e,115,30+G.wave*0.6);e.hp=0;killEnemy(e,null)}}
    break}
-  case 11:{ // Repair Drone: keep away, pulse-heal allies
+  case 11:{ // Repair Drone: keep away, pulse-heal allies (never other drones, bosses or nodes; each bot healed at most once per 1.6s no matter how many drones)
    if(dist<300){M.dvx=-ux*e.spd;M.dvy=-uy*e.spd}else if(dist<420){M.dvx=-uy*e.spd*0.6;M.dvy=ux*e.spd*0.6}
-   e.cd-=dt;if(e.cd<=0){e.cd=1.6*ag;let n=0;for(const o of G.enemies){if(o===e||o.dead||o.sp>0)continue;if((o.x-e.x)**2+(o.y-e.y)**2<210*210&&o.hp<o.mhp){o.hp=Math.min(o.mhp,o.hp+o.mhp*(isBoss(o.ty)?0.015:0.15));n++}}if(n)ev(16,e.x|0,e.y|0)}
+   e.cd-=dt;if(e.cd<=0){e.cd=1.6*ag;let n=0;for(const o of G.enemies){if(o===e||o.ty===11||isBoss(o.ty)||o.ty===14||o.dead||o.sp>0)continue;if((o.healT||0)>G.t)continue;if((o.x-e.x)**2+(o.y-e.y)**2<210*210&&o.hp<o.mhp){o.healT=G.t+1.6;o.hp=Math.min(o.mhp,o.hp+o.mhp*0.15);n++}}if(n)ev(16,e.x|0,e.y|0)}
    break}
   case 12:{ // Sniper
    if(e.st===0){if(dist<480){M.dvx=-ux*e.spd;M.dvy=-uy*e.spd}else if(dist>640){}else{M.dvx=-uy*e.spd*0.4;M.dvy=ux*e.spd*0.4}
@@ -679,7 +679,7 @@ function aiNew(e,t,dist,ux,uy,dt){
 function boom(e,R,d){for(const p of G.players.values()){if(p.down)continue;if((p.x-e.x)**2+(p.y-e.y)**2<(R+PR)**2)damagePlayer(p,d,e.x,e.y)}ev(15,e.x|0,e.y|0,R)}
 // ---- THE OVERMIND: 3 phases ----
 function aiOvermind(e,t,dist,ux,uy,dt){
- const M=AIM;const hpR=e.hp/e.mhp;const H=isHard();const ph=hpR>0.66?1:hpR>0.33?2:3;
+ const M=AIM;const hpR=e.hp/e.mhp;const H=isHard();const ph=Math.max(e.ph|0,hpR>0.66?1:hpR>0.33?2:3); // phases only go forward
  if(ph!==e.ph){e.ph=ph;ev(20,ph);
   if(ph===2){const n=(H?5:3)+G.players.size;for(let i=0;i<n;i++){const m=spawnEnemy(14,clamp(e.x+Math.cos(i/n*TAU)*190,30,AW-30),clamp(e.y+Math.sin(i/n*TAU)*190,30,AH-30),true);m.oa=i/n*TAU;m.sp=0.5}}
   if(ph===3){G.lasers=G.lasers.filter(l=>l.o!==e.id);e.cd=1}}
@@ -789,7 +789,7 @@ function onHostData(c,d){
  if(d.t==='in'){p.inp={mx:clamp(+d.mx||0,-1,1),my:clamp(+d.my||0,-1,1),a:+d.a||0,f:d.f?1:0,d:d.d|0}}
  else if(d.t==='pick'){applyPick(p,d.i)}
  else if(d.t==='mod'){modHost(p,d)}
- else if(d.t==='cup'){cuPick(p,d.i===-1?-1:clamp(d.i|0,0,63))}
+ else if(d.t==='cup'){cuPick(p,d.i===-1?-1:clamp(d.i|0,0,63),clamp(d.n|0||1,1,100000))}
 }
 function sendChoices(p){if(NET.mode!=='host'||p.id==='h')return;for(const v of NET.conns.values())if(v.pid===p.id){try{v.conn.send({t:'ch',c:p.choices,ups:p.ups})}catch(e){}}}
 function broadcast(){
@@ -1276,9 +1276,9 @@ function cuSend(p){const c=p.cu;hostSendTo(p.id,c?{t:'cu',c:c.choices,left:c.lef
 function cuNext(p){const c=p.cu;if(!c)return;if(c.left<=0){p.cu=null;hostSendTo(p.id,{t:'cu',done:1,n:c.total});return}
  const ch=offerFor(p);if(!ch.length){p.cu=null;hostSendTo(p.id,{t:'cu',done:1,n:c.total,max:1});return}c.choices=ch;c.t=0;cuSend(p)}
 function cuApply(p,k){if(!UPG[k])return;addUp(p,k,1);ev(13,p.id)}
-function cuPick(p,i){const c=p&&p.cu;if(!c||!c.choices)return;
+function cuPick(p,i,amt){const c=p&&p.cu;if(!c||!c.choices)return;
  if(i===-1){while(c.left>0){const ch=rollChoices(p);if(!ch.length)break;cuApply(p,mPick(ch));c.left--}c.left=0;cuNext(p);return}
- const k=c.choices[i|0];if(!k)return;cuApply(p,k);c.left--;c.choices=null;cuNext(p)}
+ const k=c.choices[i|0];if(!k||!upUnlocked(k))return;const n=clamp(Math.floor(+amt||1),1,c.left);for(let j=0;j<n;j++)cuApply(p,k);c.left-=n;c.choices=null;cuNext(p)}
 function modTick(dt){
  if(!G)return;
  if(NET.mode!=='client'){const me0=G.players.get(NET.myId);if(me0){me0.bankOn=MODL.bank;me0.pickAny=MODL.any}}
@@ -1322,6 +1322,19 @@ function modHost(p,d){ // p = sender player object
   else if(k==='skip'){if(G.phase!=='play'){hostSendTo(pid,{t:'mk',msg:'Skip only works mid-wave'});return}G.queue=[];G.enemies=[];G.boss=null;lbl='skipped the wave'}
   else if(k==='up5'){if(!cuStart(p,5)){hostSendTo(pid,{t:'mk',msg:'Start a game first'});return}lbl='+5 upgrades'}
   else if(k==='god'){G.god=10;lbl='god mode 10s'}
+  else if(k==='jump'){ // jump to any wave (correct Easy/Hard scaling, boss waves, wave locks follow G.wave)
+   if(G.phase==='lobby'||G.phase==='over'){hostSendTo(pid,{t:'mk',msg:'Start a game first'});return}
+   const n=clamp(Math.floor(+d.n||0),1,100000);if(!n){return}
+   const old=G.cleared|0;G.queue=[];G.enemies=[];G.ebullets=[];G.boss=null;G.lasers=[];G.later=[];
+   let gave=0;if(d.grant&&n-1>old){gave=n-1-old;for(const q of G.players.values())q.banked=(q.banked|0)+gave;G.cleared=n-1}
+   for(const q of G.players.values()){q.picked=true;q.choices=null;if(q.down){q.down=false;q.rev=0;q.hp=Math.round(q.s.maxhp*0.6);q.inv=2}}
+   G.wave=n-1;G.phase='countdown';G.pt=2.2;lbl='jumped to wave '+n+(gave?' (+'+gave+' banked upgrades each)':'');
+  }
+  else if(k==='give'){ // N upgrade tokens, banked (spend with Cash in / U, any upgrade with Pick Any)
+   if(G.phase==='lobby'||G.phase==='over'){hostSendTo(pid,{t:'mk',msg:'Start a game first'});return}
+   const n=clamp(Math.floor(+d.n||0),1,100000);const tg=d.to==='all'?[...G.players.values()]:[p];for(const q of tg)q.banked=(q.banked|0)+n;
+   lbl='+'+n+' upgrade token'+(n>1?'s':'')+(d.to==='all'?' for everyone':'');
+  }
   else return;
   G.cheat=1;toast('🤡 '+p.name+' used a cheat: '+lbl,2500);G.cheatLog=(G.cheatLog|0)+1;hostSendTo(pid,{t:'mk',msg:'🤡 Cheat used: '+lbl});
  }
@@ -1410,12 +1423,13 @@ requestAnimationFrame(mFrame);
 const mcu=document.createElement('div');mcu.id='mcu';document.body.appendChild(mcu);
 function lockedCards(){const w=NET.mode==='client'?((view()||{}).w|0):(G?G.wave|0:0);return Object.keys(UPG).filter(k=>UPG[k].w&&w<UPG[k].w).map(k=>{const u=UPG[k];return '<div class="card locked"><div class="key">🔒</div><div class="ic">'+u.ic+'</div><div class="nm">'+mEsc(u.name)+'</div><div class="ds">'+mEsc(u.desc)+'</div><div class="lv">Unlocks at wave '+u.w+'</div></div>'}).join('')}
 function cuShow(){const c=MODL.cu;if(!c)return;if(MODL.open)modOpen(false);if(NET.mode==='solo'&&MODL.cuPause===null){MODL.cuPause=paused;paused=true}const many=c.c.length>3;
- mcu.innerHTML='<div class="panel"><h2 style="margin:0 0 2px">🚀 Spend your upgrades</h2><div class="muted">'+(many?'Pick ANY upgrade':'Pick 1 of 3')+' · <b id="mcuLeft">'+c.left+'</b> left · '+(NET.mode==='solo'?'game paused':'you\'re shielded while you choose')+'</div><div class="cards'+(many?' many':'')+'">'+c.c.map((k,i)=>{const u=UPG[k];return u?'<div class="card" data-cu="'+i+'"><div class="key">'+(i<9?'['+(i+1)+']':'')+'</div><div class="ic">'+u.ic+'</div><div class="nm">'+mEsc(u.name)+'</div><div class="ds">'+mEsc(u.desc)+'</div><div class="lv">'+(c.ups[k]?'Level '+(c.ups[k]+1):'NEW')+'</div></div>':''}).join('')+(many?lockedCards():'')+'</div><button class="big" data-cu="-1">🎲 Random all ('+c.left+')</button><div class="muted" style="font-size:11px;margin-top:6px">AFK? The rest get auto-picked after 20s.</div></div>';
+ mcu.innerHTML='<div class="panel"><h2 style="margin:0 0 2px">🚀 Spend your upgrades</h2><div class="muted">'+(many?'Pick ANY upgrade':'Pick 1 of 3')+' · <b id="mcuLeft">'+c.left+'</b> left · <label class="mamt">stacks per click <input id="mcuAmt" type="number" min="1" max="'+c.left+'" value="'+Math.min(c.left,(MODL.amt|0)||1)+'"></label> · '+(NET.mode==='solo'?'game paused':'you\'re shielded while you choose')+'</div><div class="cards'+(many?' many':'')+'">'+c.c.map((k,i)=>{const u=UPG[k];return u?'<div class="card" data-cu="'+i+'"><div class="key">'+(i<9?'['+(i+1)+']':'')+'</div><div class="ic">'+u.ic+'</div><div class="nm">'+mEsc(u.name)+'</div><div class="ds">'+mEsc(u.desc)+'</div><div class="lv">'+(c.ups[k]?'Level '+(c.ups[k]+1):'NEW')+'</div></div>':''}).join('')+(many?lockedCards():'')+'</div><button class="big" data-cu="-1">🎲 Random all ('+c.left+')</button><div class="muted" style="font-size:11px;margin-top:6px">AFK? The rest get auto-picked after 20s.</div></div>';
  mcu.classList.add('show');mcu._busy=false}
 function cuHide(){mcu.classList.remove('show');mcu.innerHTML='';if(MODL.cuPause!==null){paused=MODL.cuPause;MODL.cuPause=null}}
 function cuChoose(i){if(!MODL.cu||mcu._busy)return;mcu._busy=true;Snd.play('pick');for(const el of mcu.querySelectorAll('.card'))el.classList.add(+el.dataset.cu===i?'chosen':'dim');
- if(NET.mode==='client'){try{NET.conn.send({t:'cup',i})}catch(e){}}else if(G){cuPick(G.players.get(NET.myId),i)}}
-mcu.addEventListener('click',e=>{const t=e.target.closest('[data-cu]');if(t)cuChoose(+t.dataset.cu)});
+ const n=i>=0?(MODL.amt|0)||1:1;if(NET.mode==='client'){try{NET.conn.send({t:'cup',i,n})}catch(e){}}else if(G){cuPick(G.players.get(NET.myId),i,n)}}
+mcu.addEventListener('input',e=>{if(e.target.id==='mcuAmt')MODL.amt=Math.max(1,+e.target.value|0)});
+mcu.addEventListener('click',e=>{if(e.target.closest('input,label'))return;const t=e.target.closest('[data-cu]');if(t)cuChoose(+t.dataset.cu)});
 // ---------- the menu ----------
 const mml=document.createElement('div');mml.id='mml';document.body.appendChild(mml);
 function inRun(){return !!NET.mode&&!!view()}
@@ -1430,6 +1444,7 @@ function mRender(){
  if(MODL.to==='all'&&ids.length<2)MODL.to=NET.myId;
  const cl=v.cl|0;
  const sig=JSON.stringify([MODL.bank,MODL.any,v.an,v.aa,MODL.tab==='up'?JSON.stringify(MODL.st):'',MODL.tab,MODL.to,list,cl,v.ph,MODL.shield,MODL.rv,MODL.autoCU,MODL.big,MODL.trail,isHostM(),v.ch]);
+ const ae=document.activeElement;if(ae&&ae.tagName==='INPUT'&&mml.contains(ae)&&!MODL.dirty)return;
  if(sig!==MODL._s||MODL.dirty){MODL.dirty=false;MODL._s=sig;
   const tabs=[['up','⬆️ Upgrades'],['cu','🚀 Catch-Up'],['tr','😈 Troll'],['toy','🧸 Toys'],...(isHostM()?[['ch','🤡 Cheats']]:[]),['set','⚙️']];
   let h='<div class="mp"><div class="mh"><b>🛸 STARLIGHT MOD MENU</b><span>shh 🤫</span><button data-mc>✕</button></div><div class="mt">'+tabs.map(([k,n])=>'<button data-mt="'+k+'" class="'+(MODL.tab===k?'on':'')+'">'+n+'</button>').join('')+'</div>';
@@ -1457,7 +1472,11 @@ function mRender(){
     '<button data-ch="revive"><em>💫</em><b>Revive All</b><small>Pick everyone up</small></button>'+
     '<button data-ch="skip"><em>⏭️</em><b>Skip Wave</b><small>Clears the wave</small></button>'+
     '<button data-ch="up5"><em>⬆️</em><b>+5 Upgrades</b><small>For you</small></button>'+
-    '<button data-ch="god"><em>😇</em><b>God Mode</b><small>Squad invincible 10s</small></button></div>';
+    '<button data-ch="god"><em>😇</em><b>God Mode</b><small>Squad invincible 10s</small></button></div>'+
+    '<div class="mlab">⏩ WAVE SKIP</div><div class="mrow2"><span>Jump to wave</span><input id="mJumpN" type="number" min="1" max="100000" value="'+(MODL.jumpN||Math.max(1,(v.w|0)+10))+'"><label><input id="mJumpG" type="checkbox"'+(MODL.jumpG!==false?' checked':'')+'> bank 1 upgrade per skipped wave (everyone)</label><button data-jump="1" class="mgo">⏩ Go</button></div>'+
+    '<div class="mfine muted">Uses the right '+(v.df?'HARD':'EASY')+' scaling for that wave, boss waves included, and unlocks that wave\'s locked upgrades.</div>'+
+    '<div class="mlab">🎁 GIVE UPGRADES</div><div class="mrow2"><span>Give</span><input id="mGiveN" type="number" min="1" max="100000" value="'+(MODL.giveN||10)+'"><span>upgrade tokens to</span><button data-give="me">Me</button><button data-give="all">Everyone</button></div>'+
+    '<div class="mfine muted">Tokens are banked: press <b>U</b> / Cash in to spend them. Turn on <b>Pick any upgrade</b> and set <b>stacks per click</b> in the picker to dump lots into one upgrade.</div>';
   }else{
    h+='<div class="mset"><button data-set="shield" class="'+(MODL.shield?'on':'')+'">🛡️ Prank Shield: <b>'+(MODL.shield?'ON':'OFF')+'</b><small>Blocks jumpscares sent to you (other pranks still work).</small></button>'+
     '<button data-set="rv">🕵️ Reveal my name: <b>'+['Never','Rarely (1 in 4)','Always'][MODL.rv]+'</b><small>After a prank the target sees "You got trolled by '+mEsc(me.name||'you')+'".</small></button></div><div class="mfine muted">Open/close: press <b>0 0</b> fast, or triple-tap the WAVE / SCORE box. Esc closes.'+(NET.mode==='solo'?' Solo pauses while the menu is open.':' Co-op keeps running while it\'s open!')+'</div>';
@@ -1469,6 +1488,7 @@ function mRender(){
 }
 setInterval(()=>{if(MODL.open)mRender()},250);
 function mAck(m){const P=MTRP[m.p];if(!P)return;if(m.cd)MODL.cd[m.p]=mNow()+m.cd*1000;MODL.status=m.ok?'✅ '+P[1]+' '+P[0]+' sent'+(m.n>1?' to '+m.n+' pilots':'')+'. 😈':(m.why==='cd'?'⏳ '+P[0]+' is cooling down.':'Nobody to prank.');if(MODL.open)mRender()}
+mml.addEventListener('input',e=>{const t=e.target;if(t.id==='mJumpN')MODL.jumpN=+t.value;else if(t.id==='mGiveN')MODL.giveN=+t.value;else if(t.id==='mJumpG')MODL.jumpG=t.checked});
 mml.addEventListener('click',e=>{
  if(e.target===mml||e.target.closest('[data-mc]')){modOpen(false);return}
  const t=e.target.closest('button');if(!t)return;const d=t.dataset;Snd.init();const v0=view()||{};
@@ -1480,6 +1500,8 @@ mml.addEventListener('click',e=>{
  else if(d.p1){modAct({a:'plus1',to:d.p1})}
  else if('autocu' in d){MODL.autoCU=!MODL.autoCU;STORE.set('mautocu',MODL.autoCU)}
  else if(d.ch){modAct({a:'cheat',k:d.ch})}
+ else if(d.jump){const n=+($('#mJumpN')||{}).value||0;const g=!!($('#mJumpG')||{}).checked;MODL.jumpN=n;MODL.jumpG=g;if(n>=1){modAct({a:'cheat',k:'jump',n,grant:g?1:0})}}
+ else if(d.give){const n=+($('#mGiveN')||{}).value||0;MODL.giveN=n;if(n>=1)modAct({a:'cheat',k:'give',n,to:d.give})}
  else if(d.toy){const k=d.toy;if(k==='trail')MODL.trail=!MODL.trail;else if(k==='party'){MODL.party=mNow()+12000;Snd.play('join')}else if(k==='big')MODL.big=!MODL.big;else if(k==='horn'){if(Snd.ctx&&!Snd.muted)mHorn()}else if(k==='fart')mFart(true);else if(k==='self'){modOpen(false);mJump()}}
  else if(d.ut){const k=d.ut;if(k==='bank'){MODL.bank=!MODL.bank;STORE.set('mbank',MODL.bank);modAct({a:'prefs',bank:MODL.bank,any:MODL.any})}else if(k==='any'){MODL.any=!MODL.any;STORE.set('many',MODL.any);modAct({a:'prefs',bank:MODL.bank,any:MODL.any})}else if(k==='cash')modAct({a:'cash'});else if(k==='autonext')modAct({a:'autonext',v:!v0.an});else if(k==='allatonce')modAct({a:'allatonce',v:!v0.aa});MODL._stT=0}
  else if(d.set){if(d.set==='shield'){MODL.shield=!MODL.shield;STORE.set('mshield',MODL.shield)}else{MODL.rv=(MODL.rv+1)%3;STORE.set('mrv',MODL.rv)}}
@@ -1520,6 +1542,8 @@ addEventListener('mousedown',e=>{if(!IN.touch)mTap(e.clientX,e.clientY)},true);
 #mml .mrow button{padding:5px 10px;font-size:12px;border-radius:8px;box-shadow:none}#mml .mrow button[disabled]{opacity:.35}
 #mml .big{width:100%;margin-top:4px}
 #mml .mtog{width:100%;margin-top:8px;text-align:left;background:#ffffff0c;border:1px solid #ffffff1f;color:#fff;border-radius:12px;padding:9px 12px;font-size:13px;box-shadow:none}#mml .mtog.on{border-color:#8dff4a}
+#mml .mrow2{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 2px;font-size:13px}#mml .mrow2 input[type=number]{width:96px;padding:6px 8px;border-radius:8px;border:1px solid #ffffff33;background:#0b1030;color:#fff;font-weight:800;font-size:14px}#mml .mrow2 button{padding:7px 14px;min-height:0}#mml .mrow2 label{font-size:12px;opacity:.9;display:flex;gap:5px;align-items:center;text-transform:none;letter-spacing:0;margin:0;font-weight:600}#mml .mrow2 .mgo{background:#38e8ff;color:#061022;font-weight:900;border-radius:10px}#mcu .mamt{text-transform:none;letter-spacing:0;display:inline;margin:0}
+#mcu .mamt{font-size:12px}#mcu .mamt input{width:64px;padding:2px 6px;border-radius:6px;border:1px solid #ffffff44;background:#0b1030;color:#fff;font-weight:800}
 #mml .mwarn{background:#ff5f7a1f;border:1px solid #ff5f7a66;border-radius:10px;padding:8px 10px;font-size:12.5px;margin-bottom:8px}
 #mml .mset{display:flex;flex-direction:column;gap:8px;margin-bottom:8px}#mml .mset button{text-align:left;background:#ffffff0c;border:1px solid #ffffff1f;color:#fff;border-radius:12px;padding:10px 12px;font-size:14px;box-shadow:none}#mml .mset button.on{border-color:#8dff4a}#mml .mset small{display:block;font-size:11px;opacity:.6;margin-top:2px;font-weight:400}
 #mml .mfine{font-size:12px;margin:4px 0 6px}#mml .mst{min-height:18px;margin-top:8px;font-weight:800;color:#8dff4a;font-size:13px}
